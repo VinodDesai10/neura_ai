@@ -1,0 +1,20 @@
+{
+  "name": "@neura/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node src/server.js",
+    "dev:watch": "node --watch src/server.js",
+    "worker:memory": "node src/workers/memory-worker.js",
+    "build": "node -e \"console.log('api build step not required for current runtime')\"",
+    "start": "node src/server.js",
+    "lint": "node -e \"console.log('lint not configured yet')\""
+  },
+  "dependencies": {
+    "mongodb": "^7.2.0",
+    "neo4j-driver": "^6.0.1",
+    "postgres": "^3.4.9",
+    "redis": "^5.12.1"
+  }
+}

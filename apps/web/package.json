@@ -1,0 +1,16 @@
+{
+  "name": "@neura/web",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "NODE_OPTIONS=--no-experimental-webstorage next dev",
+    "build": "NODE_OPTIONS=--no-experimental-webstorage next build",
+    "start": "NODE_OPTIONS=--no-experimental-webstorage next start",
+    "lint": "node -e \"console.log('web lint not configured yet')\""
+  },
+  "dependencies": {
+    "next": "15.3.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  }
+}

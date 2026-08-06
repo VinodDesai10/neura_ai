@@ -1,0 +1,19 @@
+{
+  "name": "neura-ai",
+  "private": true,
+  "version": "0.1.0",
+  "engines": {
+    "node": "22.x"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace @neura/web run dev",
+    "dev:api": "npm --workspace @neura/api run dev",
+    "worker:memory": "npm --workspace @neura/api run worker:memory",
+    "build": "npm run build --workspaces",
+    "lint": "npm run lint --workspaces"
+  }
+}
