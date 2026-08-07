@@ -1,5 +1,5 @@
 import { loadEnv } from "../utils/load-env.js";
-import { redisRuntimeStore } from "../storage/redis-runtime-store.js";
+import { redisRuntimeStore } from "../infrastructure/redis-runtime-store.js";
 import { processEventIntoMemories } from "../services/memory-processor.js";
 
 loadEnv();

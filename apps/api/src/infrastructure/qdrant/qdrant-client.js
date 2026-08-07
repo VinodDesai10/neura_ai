@@ -9,9 +9,7 @@ function getCollectionName() {
 }
 
 function buildHeaders() {
-  const headers = {
-    "Content-Type": "application/json"
-  };
+  const headers = { "Content-Type": "application/json" };
 
   if (process.env.QDRANT_API_KEY) {
     headers["api-key"] = process.env.QDRANT_API_KEY;
@@ -30,10 +28,7 @@ async function callQdrant(pathname, init = {}) {
   try {
     response = await fetch(buildUrl(pathname), {
       ...init,
-      headers: {
-        ...buildHeaders(),
-        ...(init.headers || {})
-      }
+      headers: { ...buildHeaders(), ...(init.headers || {}) }
     });
   } catch (error) {
     const cause = error?.cause;
@@ -91,19 +86,13 @@ export async function ensureQdrantReady(vectorSize) {
   await callQdrantIgnoringAlreadyExists(`/collections/${getCollectionName()}`, {
     method: "PUT",
     body: JSON.stringify({
-      vectors: {
-        size: vectorSize,
-        distance: process.env.QDRANT_DISTANCE || "Cosine"
-      }
+      vectors: { size: vectorSize, distance: process.env.QDRANT_DISTANCE || "Cosine" }
     })
   });
 
   await callQdrantIgnoringAlreadyExists(`/collections/${getCollectionName()}/index`, {
     method: "PUT",
-    body: JSON.stringify({
-      field_name: "sessionId",
-      field_schema: "keyword"
-    })
+    body: JSON.stringify({ field_name: "sessionId", field_schema: "keyword" })
   });
 
   collectionReady = true;
@@ -113,9 +102,7 @@ export async function ensureQdrantReady(vectorSize) {
 export async function upsertQdrantPoint(point) {
   await callQdrant(`/collections/${getCollectionName()}/points`, {
     method: "PUT",
-    body: JSON.stringify({
-      points: [point]
-    })
+    body: JSON.stringify({ points: [point] })
   });
 }
 
@@ -127,11 +114,7 @@ export async function queryQdrantPoints({ vector, sessionId, limit = 10 }) {
     // (name, preferences) surface in new sessions via semantic similarity.
     payload = await callQdrant(`/collections/${getCollectionName()}/points/query`, {
       method: "POST",
-      body: JSON.stringify({
-        query: vector,
-        limit,
-        with_payload: true
-      })
+      body: JSON.stringify({ query: vector, limit, with_payload: true })
     });
   } catch (error) {
     if (isMissingCollectionError(error)) {
@@ -154,16 +137,7 @@ export async function scrollQdrantPoints(sessionId, limit = 100) {
         with_payload: true,
         with_vector: false,
         limit,
-        filter: {
-          must: [
-            {
-              key: "sessionId",
-              match: {
-                value: sessionId
-              }
-            }
-          ]
-        }
+        filter: { must: [{ key: "sessionId", match: { value: sessionId } }] }
       })
     });
   } catch (error) {
@@ -184,11 +158,7 @@ export async function scrollAllQdrantPoints(limit = 200) {
   try {
     payload = await callQdrant(`/collections/${getCollectionName()}/points/scroll`, {
       method: "POST",
-      body: JSON.stringify({
-        with_payload: true,
-        with_vector: false,
-        limit
-      })
+      body: JSON.stringify({ with_payload: true, with_vector: false, limit })
     });
   } catch (error) {
     if (isMissingCollectionError(error)) {
@@ -207,25 +177,16 @@ export function isQdrantConfigured() {
 
 export async function getQdrantHealth() {
   if (!isQdrantEnabled()) {
-    return {
-      configured: false,
-      ok: false,
-      message: "QDRANT_URL is not set"
-    };
+    return { configured: false, ok: false, message: "QDRANT_URL is not set" };
   }
 
   try {
     const payload = await callQdrant("/collections");
     const collections = Array.isArray(payload?.result?.collections)
-      ? payload.result.collections.map((collection) => collection.name)
+      ? payload.result.collections.map((c) => c.name)
       : [];
 
-    return {
-      configured: true,
-      ok: true,
-      message: "reachable",
-      collections
-    };
+    return { configured: true, ok: true, message: "reachable", collections };
   } catch (error) {
     return {
       configured: true,

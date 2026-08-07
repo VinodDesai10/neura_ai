@@ -1,4 +1,4 @@
-import { computeMemoryFingerprint, scoreQueryOverlap } from "../../../../packages/core/src/index.js";
+import { computeMemoryFingerprint, scoreQueryOverlap } from "../../../../../packages/core/src/index.js";
 import { ensurePostgresReady, getPostgresClient } from "./postgres-client.js";
 
 const factualMemories = [];
@@ -14,17 +14,8 @@ export const factualMemoryStore = {
       const sql = getPostgresClient();
       const rows = await sql`
         insert into factual_memories (
-          id,
-          session_id,
-          fingerprint,
-          source_event_id,
-          memory_type,
-          content,
-          summary,
-          metadata,
-          embedding,
-          created_at,
-          updated_at
+          id, session_id, fingerprint, source_event_id, memory_type,
+          content, summary, metadata, embedding, created_at, updated_at
         ) values (
           ${withFingerprint.id},
           ${withFingerprint.sessionId},
@@ -56,15 +47,8 @@ export const factualMemoryStore = {
             ))
           )
         returning
-          id,
-          session_id,
-          fingerprint,
-          source_event_id,
-          memory_type,
-          content,
-          summary,
-          metadata,
-          embedding
+          id, session_id, fingerprint, source_event_id, memory_type,
+          content, summary, metadata, embedding
       `;
 
       const row = rows[0];
@@ -104,7 +88,6 @@ export const factualMemoryStore = {
   },
 
   async findRelevant(query, sessionId) {
-    // Short greetings and filler messages should not trigger memory retrieval
     const trimmed = query.trim().toLowerCase().replace(/[^a-z0-9\s]/g, "");
     const isSmallTalk = trimmed.split(/\s+/).length <= 2 &&
       ["hi","hello","hey","ok","okay","thanks","bye","yes","no","sure","great","cool"].some(w => trimmed.includes(w));
@@ -113,15 +96,8 @@ export const factualMemoryStore = {
       const sql = getPostgresClient();
       const rows = await sql`
         select
-          id,
-          session_id,
-          fingerprint,
-          source_event_id,
-          memory_type,
-          content,
-          summary,
-          metadata,
-          embedding
+          id, session_id, fingerprint, source_event_id, memory_type,
+          content, summary, metadata, embedding
         from factual_memories
         where session_id = ${sessionId}
            or (metadata->>'importance')::float >= 0.7
@@ -132,8 +108,6 @@ export const factualMemoryStore = {
       return rows
         .map((row) => {
           const lexical = scoreQueryOverlap(query, row.summary);
-          // Cross-session memories need lexical overlap to be included.
-          // Same-session memories still use importance as a signal.
           const isCrossSession = row.session_id !== sessionId;
           const score = isCrossSession
             ? lexical > 0 ? lexical + row.metadata.importance * 1.5 : 0
@@ -159,16 +133,11 @@ export const factualMemoryStore = {
         .map((entry) => entry.memory);
     }
 
-    // In-memory fallback
     const isSmallTalkLocal = query.trim().toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).length <= 2 &&
       ["hi","hello","hey","ok","okay","thanks","bye","yes","no","sure","great","cool"].some(w => query.toLowerCase().includes(w));
 
     return factualMemories
-      .filter(
-        (memory) =>
-          memory.sessionId === sessionId ||
-          memory.metadata.importance >= 0.7
-      )
+      .filter((memory) => memory.sessionId === sessionId || memory.metadata.importance >= 0.7)
       .map((memory) => {
         const lexical = scoreQueryOverlap(query, memory.summary);
         const isCrossSession = memory.sessionId !== sessionId;
@@ -188,15 +157,8 @@ export const factualMemoryStore = {
       const sql = getPostgresClient();
       const rows = await sql`
         select
-          id,
-          session_id,
-          fingerprint,
-          source_event_id,
-          memory_type,
-          content,
-          summary,
-          metadata,
-          embedding
+          id, session_id, fingerprint, source_event_id, memory_type,
+          content, summary, metadata, embedding
         from factual_memories
         order by updated_at asc
       `;

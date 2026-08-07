@@ -107,21 +107,16 @@ async function ensureNeo4jReady() {
 
       try {
         await session.executeWrite(async (tx) => {
-          // Core constraints
           await tx.run("create constraint session_id if not exists for (s:Session) require s.id is unique");
           await tx.run("create constraint event_id if not exists for (e:RawEvent) require e.id is unique");
           await tx.run("create constraint memory_id if not exists for (m:Memory) require m.id is unique");
           await tx.run("create constraint tag_name if not exists for (t:Tag) require t.name is unique");
-
-          // Metadata node constraints
           await tx.run("create constraint domain_name if not exists for (d:Domain) require d.name is unique");
           await tx.run("create constraint keyword_text if not exists for (k:Keyword) require k.text is unique");
           await tx.run("create constraint entity_value if not exists for (e:Entity) require e.value is unique");
           await tx.run("create constraint memory_type_name if not exists for (mt:MemoryType) require mt.name is unique");
           await tx.run("create constraint importance_level_name if not exists for (il:ImportanceLevel) require il.name is unique");
           await tx.run("create constraint sentiment_value if not exists for (s:Sentiment) require s.value is unique");
-
-          // Indexes for performance
           await tx.run("create index memory_domain if not exists for (m:Memory) on (m.domain)");
           await tx.run("create index memory_importance if not exists for (m:Memory) on (m.importance)");
           await tx.run("create index memory_confidence if not exists for (m:Memory) on (m.confidence)");
@@ -142,6 +137,157 @@ async function ensureNeo4jReady() {
   return true;
 }
 
+// Helper: Convert importance score to categorical level
+function getImportanceLevel(score) {
+  if (score >= 0.75) return { name: "critical", min: 0.75, max: 1.0 };
+  if (score >= 0.5) return { name: "high", min: 0.5, max: 0.75 };
+  if (score >= 0.25) return { name: "medium", min: 0.25, max: 0.5 };
+  return { name: "low", min: 0, max: 0.25 };
+}
+
+async function writeMemoryToGraph(tx, memory) {
+  const keywords = pickGraphKeywords(memory.metadata.keywords);
+  const entities = pickGraphEntities(memory.metadata.entities);
+
+  await tx.run(
+    `
+    merge (s:Session {id: $sessionId})
+    set s.updatedAt = $timestamp
+    merge (e:RawEvent {id: $sourceEventId})
+    merge (m:Memory {id: $memoryId})
+    set
+      m.type = $memoryType,
+      m.summary = $summary,
+      m.content = $content,
+      m.fingerprint = $fingerprint,
+      m.importance = $importance,
+      m.confidence = $confidence,
+      m.domain = $domain,
+      m.updatedAt = $timestamp,
+      m.specificityScore = $specificity,
+      m.permanenceScore = $permanence,
+      m.actionabilityScore = $actionability,
+      m.signalStrength = $signalStrength,
+      m.sentiment = $sentiment,
+      m.domainConfidence = $domainConfidence,
+      m.role = $role
+    merge (s)-[:HAS_MEMORY]->(m)
+    merge (e)-[:PRODUCED_MEMORY]->(m)
+    `,
+    {
+      sessionId: memory.sessionId,
+      sourceEventId: memory.sourceEventId,
+      memoryId: memory.id,
+      memoryType: memory.memoryType,
+      summary: memory.summary,
+      content: memory.content,
+      fingerprint: memory.fingerprint,
+      importance: memory.metadata.importance,
+      confidence: memory.metadata.confidence,
+      domain: memory.metadata.domain,
+      timestamp: memory.metadata.timestamp,
+      specificity: memory.metadata.specificity || 0,
+      permanence: memory.metadata.permanence || 0,
+      actionability: memory.metadata.actionability || 0,
+      signalStrength: memory.metadata.signalStrength || 0,
+      sentiment: memory.metadata.sentiment || "neutral",
+      domainConfidence: memory.metadata.domainConfidence || 0,
+      role: memory.metadata.role || "user"
+    }
+  );
+
+  if (memory.metadata.domain) {
+    await tx.run(
+      `
+      match (m:Memory {id: $memoryId})
+      merge (d:Domain {name: $domain})
+      set d.updatedAt = timestamp()
+      merge (m)-[:ABOUT]->(d)
+      `,
+      { memoryId: memory.id, domain: memory.metadata.domain }
+    );
+  }
+
+  await tx.run(
+    `
+    match (m:Memory {id: $memoryId})
+    merge (mt:MemoryType {name: $memoryType})
+    merge (m)-[:IS_TYPE]->(mt)
+    `,
+    { memoryId: memory.id, memoryType: memory.memoryType }
+  );
+
+  const importanceLevel = getImportanceLevel(memory.metadata.importance);
+  await tx.run(
+    `
+    match (m:Memory {id: $memoryId})
+    merge (il:ImportanceLevel {name: $level})
+    set il.minScore = $minScore, il.maxScore = $maxScore
+    merge (m)-[:HAS_IMPORTANCE]->(il)
+    `,
+    { memoryId: memory.id, level: importanceLevel.name, minScore: importanceLevel.min, maxScore: importanceLevel.max }
+  );
+
+  if (memory.metadata.sentiment) {
+    await tx.run(
+      `
+      match (m:Memory {id: $memoryId})
+      merge (s:Sentiment {value: $sentiment})
+      merge (m)-[:HAS_SENTIMENT]->(s)
+      `,
+      { memoryId: memory.id, sentiment: memory.metadata.sentiment }
+    );
+  }
+
+  for (const tag of memory.metadata.tags || []) {
+    await tx.run(
+      `
+      match (m:Memory {id: $memoryId})
+      merge (t:Tag {name: $tag})
+      merge (m)-[:TAGGED_WITH]->(t)
+      `,
+      { memoryId: memory.id, tag }
+    );
+  }
+
+  for (let i = 0; i < keywords.length; i++) {
+    await tx.run(
+      `
+      match (m:Memory {id: $memoryId})
+      merge (k:Keyword {text: $keyword})
+      on create set k.frequency = 1
+      on match set k.frequency = k.frequency + 1
+      set k.updatedAt = timestamp()
+      merge (m)-[:HAS_KEYWORD {position: $position}]->(k)
+      `,
+      { memoryId: memory.id, keyword: keywords[i], position: i }
+    );
+  }
+
+  for (const entity of entities) {
+    await tx.run(
+      `
+      match (m:Memory {id: $memoryId})
+      merge (e:Entity {value: $value, type: $type})
+      set e.updatedAt = timestamp(), e.occurrences = coalesce(e.occurrences, 0) + 1
+      merge (m)-[:MENTIONS]->(e)
+      `,
+      { memoryId: memory.id, value: entity.value, type: entity.type }
+    );
+  }
+
+  for (const altDomain of memory.metadata.alternateDomains || []) {
+    await tx.run(
+      `
+      match (m:Memory {id: $memoryId})
+      merge (d:Domain {name: $domain})
+      merge (m)-[:COULD_BE_ABOUT {confidence: $altConfidence}]->(d)
+      `,
+      { memoryId: memory.id, domain: altDomain, altConfidence: 0.3 }
+    );
+  }
+}
+
 export async function linkBatchMemoryRelationships(memories) {
   try {
     const curatedMemories = (memories || []).filter(shouldGraphMemory);
@@ -159,192 +305,12 @@ export async function linkBatchMemoryRelationships(memories) {
     });
 
     try {
-      // Process all memories in a single transaction for efficiency
       await session.executeWrite(async (tx) => {
         for (const memory of curatedMemories) {
-          const keywords = pickGraphKeywords(memory.metadata.keywords);
-          const entities = pickGraphEntities(memory.metadata.entities);
-
-          // Core memory relationships
-          await tx.run(
-            `
-            merge (s:Session {id: $sessionId})
-            set s.updatedAt = $timestamp
-            merge (e:RawEvent {id: $sourceEventId})
-            merge (m:Memory {id: $memoryId})
-            set
-              m.type = $memoryType,
-              m.summary = $summary,
-              m.content = $content,
-              m.fingerprint = $fingerprint,
-              m.importance = $importance,
-              m.confidence = $confidence,
-              m.domain = $domain,
-              m.updatedAt = $timestamp,
-              m.specificityScore = $specificity,
-              m.permanenceScore = $permanence,
-              m.actionabilityScore = $actionability,
-              m.signalStrength = $signalStrength,
-              m.sentiment = $sentiment,
-              m.domainConfidence = $domainConfidence,
-              m.role = $role
-            merge (s)-[:HAS_MEMORY]->(m)
-            merge (e)-[:PRODUCED_MEMORY]->(m)
-            `,
-            {
-              sessionId: memory.sessionId,
-              sourceEventId: memory.sourceEventId,
-              memoryId: memory.id,
-              memoryType: memory.memoryType,
-              summary: memory.summary,
-              content: memory.content,
-              fingerprint: memory.fingerprint,
-              importance: memory.metadata.importance,
-              confidence: memory.metadata.confidence,
-              domain: memory.metadata.domain,
-              timestamp: memory.metadata.timestamp,
-              specificity: memory.metadata.specificity || 0,
-              permanence: memory.metadata.permanence || 0,
-              actionability: memory.metadata.actionability || 0,
-              signalStrength: memory.metadata.signalStrength || 0,
-              sentiment: memory.metadata.sentiment || "neutral",
-              domainConfidence: memory.metadata.domainConfidence || 0,
-              role: memory.metadata.role || "user"
-            }
-          );
-
-          // Domain node
-          if (memory.metadata.domain) {
-            await tx.run(
-              `
-              match (m:Memory {id: $memoryId})
-              merge (d:Domain {name: $domain})
-              set d.updatedAt = timestamp()
-              merge (m)-[:ABOUT]->(d)
-              `,
-              {
-                memoryId: memory.id,
-                domain: memory.metadata.domain
-              }
-            );
-          }
-
-          // Memory type node
-          await tx.run(
-            `
-            match (m:Memory {id: $memoryId})
-            merge (mt:MemoryType {name: $memoryType})
-            merge (m)-[:IS_TYPE]->(mt)
-            `,
-            {
-              memoryId: memory.id,
-              memoryType: memory.memoryType
-            }
-          );
-
-          // Importance level node
-          const importanceLevel = getImportanceLevel(memory.metadata.importance);
-          await tx.run(
-            `
-            match (m:Memory {id: $memoryId})
-            merge (il:ImportanceLevel {name: $level})
-            set il.minScore = $minScore, il.maxScore = $maxScore
-            merge (m)-[:HAS_IMPORTANCE]->(il)
-            `,
-            {
-              memoryId: memory.id,
-              level: importanceLevel.name,
-              minScore: importanceLevel.min,
-              maxScore: importanceLevel.max
-            }
-          );
-
-          // Sentiment node
-          if (memory.metadata.sentiment) {
-            await tx.run(
-              `
-              match (m:Memory {id: $memoryId})
-              merge (s:Sentiment {value: $sentiment})
-              merge (m)-[:HAS_SENTIMENT]->(s)
-              `,
-              {
-                memoryId: memory.id,
-                sentiment: memory.metadata.sentiment
-              }
-            );
-          }
-
-          // Tags
-          for (const tag of memory.metadata.tags || []) {
-            await tx.run(
-              `
-              match (m:Memory {id: $memoryId})
-              merge (t:Tag {name: $tag})
-              merge (m)-[:TAGGED_WITH]->(t)
-              `,
-              {
-                memoryId: memory.id,
-                tag
-              }
-            );
-          }
-
-          // Keywords with co-occurrence tracking
-          for (let i = 0; i < keywords.length; i++) {
-            const keyword = keywords[i];
-            await tx.run(
-              `
-              match (m:Memory {id: $memoryId})
-              merge (k:Keyword {text: $keyword})
-              on create set k.frequency = 1
-              on match set k.frequency = k.frequency + 1
-              set k.updatedAt = timestamp()
-              merge (m)-[:HAS_KEYWORD {position: $position}]->(k)
-              `,
-              {
-                memoryId: memory.id,
-                keyword,
-                position: i
-              }
-            );
-          }
-
-          // Entities (people, emails, URLs, dates, etc.)
-          for (const entity of entities) {
-            await tx.run(
-              `
-              match (m:Memory {id: $memoryId})
-              merge (e:Entity {value: $value, type: $type})
-              set e.updatedAt = timestamp(), e.occurrences = coalesce(e.occurrences, 0) + 1
-              merge (m)-[:MENTIONS]->(e)
-              `,
-              {
-                memoryId: memory.id,
-                value: entity.value,
-                type: entity.type
-              }
-            );
-          }
-
-          // Link alternate domains if confidence is lower
-          for (const altDomain of memory.metadata.alternateDomains || []) {
-            await tx.run(
-              `
-              match (m:Memory {id: $memoryId})
-              merge (d:Domain {name: $domain})
-              merge (m)-[:COULD_BE_ABOUT {confidence: $altConfidence}]->(d)
-              `,
-              {
-                memoryId: memory.id,
-                domain: altDomain,
-                altConfidence: 0.3
-              }
-            );
-          }
+          await writeMemoryToGraph(tx, memory);
         }
       });
 
-      // Link similar memories in separate transaction
       for (const memory of curatedMemories) {
         await linkSimilarMemories(memory);
       }
@@ -424,190 +390,10 @@ export async function linkMemoryRelationships(memory) {
 
     try {
       await session.executeWrite(async (tx) => {
-        const keywords = pickGraphKeywords(memory.metadata.keywords);
-        const entities = pickGraphEntities(memory.metadata.entities);
-
-        // Core memory relationships
-        await tx.run(
-          `
-          merge (s:Session {id: $sessionId})
-          set s.updatedAt = $timestamp
-          merge (e:RawEvent {id: $sourceEventId})
-          merge (m:Memory {id: $memoryId})
-          set
-            m.type = $memoryType,
-            m.summary = $summary,
-            m.content = $content,
-            m.fingerprint = $fingerprint,
-            m.importance = $importance,
-            m.confidence = $confidence,
-            m.domain = $domain,
-            m.updatedAt = $timestamp,
-            m.specificityScore = $specificity,
-            m.permanenceScore = $permanence,
-            m.actionabilityScore = $actionability,
-            m.signalStrength = $signalStrength,
-            m.sentiment = $sentiment,
-            m.domainConfidence = $domainConfidence,
-            m.role = $role
-          merge (s)-[:HAS_MEMORY]->(m)
-          merge (e)-[:PRODUCED_MEMORY]->(m)
-          `,
-          {
-            sessionId: memory.sessionId,
-            sourceEventId: memory.sourceEventId,
-            memoryId: memory.id,
-            memoryType: memory.memoryType,
-            summary: memory.summary,
-            content: memory.content,
-            fingerprint: memory.fingerprint,
-            importance: memory.metadata.importance,
-            confidence: memory.metadata.confidence,
-            domain: memory.metadata.domain,
-            timestamp: memory.metadata.timestamp,
-            specificity: memory.metadata.specificity || 0,
-            permanence: memory.metadata.permanence || 0,
-            actionability: memory.metadata.actionability || 0,
-            signalStrength: memory.metadata.signalStrength || 0,
-            sentiment: memory.metadata.sentiment || "neutral",
-            domainConfidence: memory.metadata.domainConfidence || 0,
-            role: memory.metadata.role || "user"
-          }
-        );
-
-        // Domain node
-        if (memory.metadata.domain) {
-          await tx.run(
-            `
-            match (m:Memory {id: $memoryId})
-            merge (d:Domain {name: $domain})
-            set d.updatedAt = timestamp()
-            merge (m)-[:ABOUT]->(d)
-            `,
-            {
-              memoryId: memory.id,
-              domain: memory.metadata.domain
-            }
-          );
-        }
-
-        // Memory type node
-        await tx.run(
-          `
-          match (m:Memory {id: $memoryId})
-          merge (mt:MemoryType {name: $memoryType})
-          merge (m)-[:IS_TYPE]->(mt)
-          `,
-          {
-            memoryId: memory.id,
-            memoryType: memory.memoryType
-          }
-        );
-
-        // Importance level node
-        const importanceLevel = getImportanceLevel(memory.metadata.importance);
-        await tx.run(
-          `
-          match (m:Memory {id: $memoryId})
-          merge (il:ImportanceLevel {name: $level})
-          set il.minScore = $minScore, il.maxScore = $maxScore
-          merge (m)-[:HAS_IMPORTANCE]->(il)
-          `,
-          {
-            memoryId: memory.id,
-            level: importanceLevel.name,
-            minScore: importanceLevel.min,
-            maxScore: importanceLevel.max
-          }
-        );
-
-        // Sentiment node
-        if (memory.metadata.sentiment) {
-          await tx.run(
-            `
-            match (m:Memory {id: $memoryId})
-            merge (s:Sentiment {value: $sentiment})
-            merge (m)-[:HAS_SENTIMENT]->(s)
-            `,
-            {
-              memoryId: memory.id,
-              sentiment: memory.metadata.sentiment
-            }
-          );
-        }
-
-        // Tags
-        for (const tag of memory.metadata.tags || []) {
-          await tx.run(
-            `
-            match (m:Memory {id: $memoryId})
-            merge (t:Tag {name: $tag})
-            merge (m)-[:TAGGED_WITH]->(t)
-            `,
-            {
-              memoryId: memory.id,
-              tag
-            }
-          );
-        }
-
-        // Keywords with co-occurrence tracking
-        for (let i = 0; i < keywords.length; i++) {
-          const keyword = keywords[i];
-          await tx.run(
-            `
-            match (m:Memory {id: $memoryId})
-            merge (k:Keyword {text: $keyword})
-            on create set k.frequency = 1
-            on match set k.frequency = k.frequency + 1
-            set k.updatedAt = timestamp()
-            merge (m)-[:HAS_KEYWORD {position: $position}]->(k)
-            `,
-            {
-              memoryId: memory.id,
-              keyword,
-              position: i
-            }
-          );
-        }
-
-        // Entities (people, emails, URLs, dates, etc.)
-        for (const entity of entities) {
-          await tx.run(
-            `
-            match (m:Memory {id: $memoryId})
-            merge (e:Entity {value: $value, type: $type})
-            set e.updatedAt = timestamp(), e.occurrences = coalesce(e.occurrences, 0) + 1
-            merge (m)-[:MENTIONS]->(e)
-            `,
-            {
-              memoryId: memory.id,
-              value: entity.value,
-              type: entity.type
-            }
-          );
-        }
-
-        // Link alternate domains if confidence is lower
-        for (const altDomain of memory.metadata.alternateDomains || []) {
-          await tx.run(
-            `
-            match (m:Memory {id: $memoryId})
-            merge (d:Domain {name: $domain})
-            merge (m)-[:COULD_BE_ABOUT {confidence: $altConfidence}]->(d)
-            `,
-            {
-              memoryId: memory.id,
-              domain: altDomain,
-              altConfidence: 0.3
-            }
-          );
-        }
+        await writeMemoryToGraph(tx, memory);
       });
 
-      // Link similar memories (run in separate transaction for better performance)
       await linkSimilarMemories(memory);
-
       return true;
     } finally {
       await session.close();
@@ -621,15 +407,6 @@ export async function linkMemoryRelationships(memory) {
   }
 }
 
-// Helper: Convert importance score to categorical level
-function getImportanceLevel(score) {
-  if (score >= 0.75) return { name: "critical", min: 0.75, max: 1.0 };
-  if (score >= 0.5) return { name: "high", min: 0.5, max: 0.75 };
-  if (score >= 0.25) return { name: "medium", min: 0.25, max: 0.5 };
-  return { name: "low", min: 0, max: 0.25 };
-}
-
-// Link semantically similar memories based on shared keywords, tags, and domain
 async function linkSimilarMemories(memory) {
   try {
     if (!(await ensureNeo4jReady())) {
@@ -642,7 +419,6 @@ async function linkSimilarMemories(memory) {
 
     try {
       await session.executeWrite(async (tx) => {
-        // Find memories with shared keywords (at least 2 shared keywords)
         await tx.run(
           `
           match (m:Memory {id: $memoryId})-[:HAS_KEYWORD]->(k:Keyword)<-[:HAS_KEYWORD]-(other:Memory)
@@ -651,24 +427,18 @@ async function linkSimilarMemories(memory) {
           where sharedKeywords >= 2
           merge (m)-[r:SIMILAR_TO {reason: "shared_keywords", score: sharedKeywords}]->(other)
           `,
-          {
-            memoryId: memory.id
-          }
+          { memoryId: memory.id }
         );
 
-        // Find memories with same domain
         await tx.run(
           `
           match (m:Memory {id: $memoryId})-[:ABOUT]->(d:Domain)<-[:ABOUT]-(other:Memory)
           where other.id <> $memoryId and other.updatedAt is not null
           merge (m)-[r:SIMILAR_TO {reason: "shared_domain"}]->(other)
           `,
-          {
-            memoryId: memory.id
-          }
+          { memoryId: memory.id }
         );
 
-        // Find memories with shared tags
         await tx.run(
           `
           match (m:Memory {id: $memoryId})-[:TAGGED_WITH]->(t:Tag)<-[:TAGGED_WITH]-(other:Memory)
@@ -677,12 +447,9 @@ async function linkSimilarMemories(memory) {
           where sharedTags >= 2
           merge (m)-[r:SIMILAR_TO {reason: "shared_tags", score: sharedTags}]->(other)
           `,
-          {
-            memoryId: memory.id
-          }
+          { memoryId: memory.id }
         );
 
-        // NEW: Link co-occurring keywords
         await tx.run(
           `
           match (m:Memory {id: $memoryId})-[:HAS_KEYWORD]->(k1:Keyword),
@@ -692,12 +459,8 @@ async function linkSimilarMemories(memory) {
           on create set r.cooccurrences = 1
           on match set r.cooccurrences = coalesce(r.cooccurrences, 0) + 1
           `,
-          {
-            memoryId: memory.id
-          }
+          { memoryId: memory.id }
         );
-
-        return true;
       });
 
       return true;
@@ -713,7 +476,6 @@ async function linkSimilarMemories(memory) {
   }
 }
 
-// Query: Find memories by domain
 export async function findMemoriesByDomain(sessionId, domain, limit = 10) {
   try {
     if (!(await ensureNeo4jReady())) {
@@ -729,15 +491,12 @@ export async function findMemoriesByDomain(sessionId, domain, limit = 10) {
         tx.run(
           `
           match (s:Session {id: $sessionId})-[:HAS_MEMORY]->(m:Memory)-[:ABOUT]->(d:Domain {name: $domain})
-          return m.id as id, m.summary as summary, m.content as content, m.importance as importance, m.confidence as confidence
+          return m.id as id, m.summary as summary, m.content as content,
+                 m.importance as importance, m.confidence as confidence
           order by m.importance desc, m.updatedAt desc
           limit $limit
           `,
-          {
-            sessionId,
-            domain,
-            limit
-          }
+          { sessionId, domain, limit }
         )
       );
 
@@ -757,7 +516,6 @@ export async function findMemoriesByDomain(sessionId, domain, limit = 10) {
   }
 }
 
-// Query: Find memories by keyword
 export async function findMemoriesByKeyword(sessionId, keyword, limit = 10) {
   try {
     if (!(await ensureNeo4jReady())) {
@@ -777,11 +535,7 @@ export async function findMemoriesByKeyword(sessionId, keyword, limit = 10) {
           order by m.importance desc, m.updatedAt desc
           limit $limit
           `,
-          {
-            sessionId,
-            keyword,
-            limit
-          }
+          { sessionId, keyword, limit }
         )
       );
 
@@ -800,7 +554,6 @@ export async function findMemoriesByKeyword(sessionId, keyword, limit = 10) {
   }
 }
 
-// Query: Find memories by entity
 export async function findMemoriesByEntity(sessionId, entityValue, limit = 10) {
   try {
     if (!(await ensureNeo4jReady())) {
@@ -816,15 +569,12 @@ export async function findMemoriesByEntity(sessionId, entityValue, limit = 10) {
         tx.run(
           `
           match (s:Session {id: $sessionId})-[:HAS_MEMORY]->(m:Memory)-[:MENTIONS]->(e:Entity {value: $entityValue})
-          return m.id as id, m.summary as summary, m.content as content, m.importance as importance, e.type as entityType
+          return m.id as id, m.summary as summary, m.content as content,
+                 m.importance as importance, e.type as entityType
           order by m.importance desc, m.updatedAt desc
           limit $limit
           `,
-          {
-            sessionId,
-            entityValue,
-            limit
-          }
+          { sessionId, entityValue, limit }
         )
       );
 
@@ -844,7 +594,6 @@ export async function findMemoriesByEntity(sessionId, entityValue, limit = 10) {
   }
 }
 
-// Query: Find similar memories
 export async function findSimilarMemories(memoryId, limit = 5) {
   try {
     if (!(await ensureNeo4jReady())) {
@@ -864,11 +613,7 @@ export async function findSimilarMemories(memoryId, limit = 5) {
           order by similar.importance desc, similar.updatedAt desc
           limit $limit
           `,
-          {
-            memoryId,
-            reason: "shared_keywords",
-            limit
-          }
+          { memoryId, reason: "shared_keywords", limit }
         )
       );
 
@@ -886,7 +631,6 @@ export async function findSimilarMemories(memoryId, limit = 5) {
   }
 }
 
-// Query: Get memory graph statistics
 export async function getMemoryGraphStats(sessionId) {
   try {
     if (!(await ensureNeo4jReady())) {
@@ -915,9 +659,7 @@ export async function getMemoryGraphStats(sessionId) {
             entities: count(distinct e)
           } as stats
           `,
-          {
-            sessionId
-          }
+          { sessionId }
         )
       );
 

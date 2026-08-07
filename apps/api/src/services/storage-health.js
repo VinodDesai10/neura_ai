@@ -1,8 +1,8 @@
-import { getMongoHealth } from "../storage/mongo-client.js";
-import { getNeo4jHealth } from "../storage/relationship-graph-store.js";
-import { getPostgresHealth } from "../storage/postgres-client.js";
-import { getQdrantHealth } from "../storage/qdrant-client.js";
-import { getRedisHealth } from "../storage/redis-client.js";
+import { getMongoHealth } from "../infrastructure/mongo-client.js";
+import { getNeo4jHealth } from "../infrastructure/relationship-graph-store.js";
+import { getPostgresHealth } from "../infrastructure/postgres-client.js";
+import { getQdrantHealth } from "../infrastructure/qdrant-client.js";
+import { getRedisHealth } from "../infrastructure/redis-client.js";
 
 export async function getStorageHealth() {
   const [mongo, postgres, qdrant, redis, neo4j] = await Promise.all([
@@ -14,9 +14,7 @@ export async function getStorageHealth() {
   ]);
 
   const services = [mongo, postgres, qdrant, redis, neo4j];
-  const configuredCount = services.filter(
-    (service) => service.configured
-  ).length;
+  const configuredCount = services.filter((service) => service.configured).length;
   const okCount = services.filter((service) => service.ok).length;
 
   return {

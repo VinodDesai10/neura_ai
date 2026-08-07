@@ -2,9 +2,9 @@ import {
   computeMemoryFingerprint,
   extractMemoryCandidates
 } from "../../../../packages/core/src/index.js";
-import { factualMemoryStore } from "../storage/factual-memory-store.js";
-import { vectorMemoryStore } from "../storage/vector-memory-store.js";
-import { linkMemoryRelationships, linkBatchMemoryRelationships } from "../storage/relationship-graph-store.js";
+import { factualMemoryStore } from "../infrastructure/factual-memory-store.js";
+import { vectorMemoryStore } from "../infrastructure/vector-memory-store.js";
+import { linkMemoryRelationships, linkBatchMemoryRelationships } from "../infrastructure/relationship-graph-store.js";
 import { openAIAdapter } from "./openai-adapter.js";
 
 // Cache for embeddings to avoid duplicate requests
@@ -35,7 +35,6 @@ export async function processEventIntoMemories(event) {
       continue;
     }
 
-    // Use cached embedding if available
     const embeddingKey = `${candidate.memoryType}:${candidate.summary}`;
     if (embeddingCache.has(embeddingKey)) {
       candidate.embedding = embeddingCache.get(embeddingKey);
@@ -51,7 +50,6 @@ export async function processEventIntoMemories(event) {
     stored.push(storedMemory);
   }
 
-  // Batch link all memories at once for efficiency
   if (memoriesToLink.length > 0) {
     await linkBatchMemoryRelationships(memoriesToLink);
   }

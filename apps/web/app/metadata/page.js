@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
@@ -237,12 +236,7 @@ export default function MetadataPage() {
   return (
     <div className="shell">
       <header className="top-nav">
-        <div className="nav-brand">⚡ AiNeura</div>
-        <nav className="nav-tabs">
-          <Link href="/" className="nav-tab">Chat</Link>
-          <Link href="/redis" className="nav-tab">Memory Flow</Link>
-          <Link href="/metadata" className="nav-tab active">Metadata Lab</Link>
-        </nav>
+        <div className="nav-brand">⚡ AiNeura — Metadata Lab</div>
         <div />
       </header>
 

@@ -1,7 +1,4 @@
-import {
-  computeMemoryFingerprint,
-  scoreQueryOverlap
-} from "../../../../packages/core/src/index.js";
+import { computeMemoryFingerprint, scoreQueryOverlap } from "../../../../../packages/core/src/index.js";
 import {
   ensureQdrantReady,
   isQdrantConfigured,
@@ -85,10 +82,7 @@ export const vectorMemoryStore = {
 
   async findRelevant({ query, queryEmbedding, sessionId }) {
     if (isQdrantConfigured() && Array.isArray(queryEmbedding)) {
-      const points = await queryQdrantPoints({
-        vector: queryEmbedding,
-        sessionId
-      });
+      const points = await queryQdrantPoints({ vector: queryEmbedding, sessionId });
 
       return points
         .map((point) => {
@@ -118,7 +112,6 @@ export const vectorMemoryStore = {
         .map((entry) => entry.memory);
     }
 
-    // In-memory fallback: search cross-session, require relevance signal
     const trimmedQuery = query.trim().toLowerCase().replace(/[^a-z0-9\s]/g, "");
     const isSmallTalk = trimmedQuery.split(/\s+/).length <= 2 &&
       ["hi","hello","hey","ok","okay","thanks","bye","yes","no","sure","great","cool"].some(w => trimmedQuery.includes(w));
@@ -133,10 +126,11 @@ export const vectorMemoryStore = {
             : -1;
         const lexicalScore = scoreQueryOverlap(query, memory.summary);
         const isCrossSession = memory.sessionId !== sessionId;
-        // Cross-session: require meaningful embedding similarity or lexical overlap
+
         if (isCrossSession && embeddingScore < 0.5 && lexicalScore === 0) {
           return { memory, score: 0 };
         }
+
         const sessionBonus = isCrossSession ? 0 : 0.05;
         return {
           memory,

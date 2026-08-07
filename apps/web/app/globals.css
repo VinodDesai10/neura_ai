@@ -1315,3 +1315,333 @@ h1, h2, h3, h4, h5, h6 {
   .metric-box  { min-width: 90px; }
   .msg         { max-width: 88%; }
 }
+
+/* ------------------------------------------------------------
+   42. Session History Sidebar
+   ------------------------------------------------------------ */
+
+.new-chat-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--blue);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform var(--t-spring), box-shadow var(--t), opacity var(--t);
+  box-shadow: 0 2px 10px rgba(0,122,255,0.28);
+}
+
+.new-chat-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0,122,255,0.38);
+}
+
+.new-chat-btn:active { transform: translateY(0); }
+
+.sidebar-session-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 30px 9px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: background var(--t), border-color var(--t);
+}
+
+.sidebar-session-item:hover {
+  background: var(--blue-light);
+}
+
+.sidebar-session-item.active {
+  background: var(--blue-mid);
+  border-color: rgba(0,122,255,0.2);
+}
+
+.sidebar-session-title {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.sidebar-session-item.active .sidebar-session-title {
+  font-weight: 600;
+  color: var(--blue);
+}
+
+.sidebar-session-meta {
+  font-size: 11px;
+  color: var(--text-quaternary);
+  font-variant-numeric: tabular-nums;
+}
+
+.sidebar-session-delete {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--text-quaternary);
+  font-size: 10px;
+  cursor: pointer;
+  transition: background var(--t), color var(--t);
+  padding: 0;
+  line-height: 1;
+}
+
+.sidebar-session-item:hover .sidebar-session-delete,
+.sidebar-session-item.active .sidebar-session-delete {
+  display: flex;
+}
+
+.sidebar-session-delete:hover {
+  background: rgba(255,59,48,0.12);
+  color: var(--red);
+}
+
+/* ------------------------------------------------------------
+   43. Empty State — New Chat
+   ------------------------------------------------------------ */
+
+.chat-empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  gap: 12px;
+  text-align: center;
+  animation: fadeIn var(--t) ease both;
+}
+
+.chat-empty-logo {
+  font-size: 48px;
+  line-height: 1;
+  margin-bottom: 4px;
+  filter: drop-shadow(0 2px 8px rgba(0,122,255,0.25));
+}
+
+.chat-empty-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.chat-empty-sub {
+  font-size: 14px;
+  color: var(--text-tertiary);
+  max-width: 340px;
+  line-height: 1.5;
+}
+
+.chat-empty-prompts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  width: 100%;
+  max-width: 440px;
+}
+
+.chat-empty-prompt-btn {
+  display: flex;
+  align-items: center;
+  text-align: left;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1.5px solid var(--separator);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--t), border-color var(--t), color var(--t), box-shadow var(--t);
+  box-shadow: var(--shadow-xs);
+  line-height: 1.4;
+}
+
+.chat-empty-prompt-btn:hover {
+  background: var(--blue-light);
+  border-color: var(--blue);
+  color: var(--blue);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ------------------------------------------------------------
+   44. Markdown rendered content
+   ------------------------------------------------------------ */
+
+.msg-content-md { white-space: normal; }
+
+.msg-content-md .md-p {
+  margin: 0 0 6px;
+  line-height: 1.6;
+}
+.msg-content-md .md-p:last-child { margin-bottom: 0; }
+
+.msg-content-md .md-spacer { height: 6px; }
+
+.msg-content-md .md-h1,
+.msg-content-md .md-h2,
+.msg-content-md .md-h3 {
+  margin: 10px 0 4px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+.msg-content-md .md-h1 { font-size: 16px; }
+.msg-content-md .md-h2 { font-size: 14.5px; }
+.msg-content-md .md-h3 { font-size: 13.5px; }
+
+.msg-content-md .md-ul,
+.msg-content-md .md-ol {
+  padding-left: 18px;
+  margin: 4px 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.msg-content-md .md-ul { list-style: disc; }
+.msg-content-md .md-ol { list-style: decimal; }
+
+.msg-content-md li {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-primary);
+}
+
+.msg-content-md .md-pre {
+  margin: 8px 0;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--separator);
+}
+
+.msg-content-md .md-code-block {
+  display: block;
+  padding: 12px 14px;
+  background: #1c1c1e;
+  color: #e5e5ea;
+  font-family: 'SF Mono', ui-monospace, 'Fira Code', monospace;
+  font-size: 12.5px;
+  line-height: 1.65;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.msg-content-md .md-inline-code {
+  display: inline;
+  padding: 1px 6px;
+  background: rgba(118,118,128,0.12);
+  border-radius: 5px;
+  font-family: 'SF Mono', ui-monospace, 'Fira Code', monospace;
+  font-size: 12.5px;
+  color: var(--indigo);
+}
+
+/* For user bubbles inline code keep white */
+.msg-user .md-inline-code {
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+}
+
+/* ------------------------------------------------------------
+   45. Message copy button
+   ------------------------------------------------------------ */
+
+.msg-content-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.msg-copy-btn {
+  align-self: flex-start;
+  opacity: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  border: 1px solid var(--separator);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity var(--t), background var(--t), color var(--t);
+  pointer-events: none;
+}
+
+.msg-assistant:hover .msg-copy-btn,
+.msg-copy-btn.copied {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.msg-copy-btn:hover {
+  background: var(--blue-light);
+  color: var(--blue);
+  border-color: rgba(0,122,255,0.2);
+}
+
+.msg-copy-btn.copied {
+  background: var(--green-light);
+  color: var(--green);
+  border-color: rgba(52,199,89,0.25);
+}
+
+/* ------------------------------------------------------------
+   46. Memory importance bar
+   ------------------------------------------------------------ */
+
+.mem-score-track {
+  height: 4px;
+  background: var(--surface-3);
+  border-radius: 99px;
+  overflow: hidden;
+  border: 1px solid var(--separator);
+}
+
+.mem-score-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 3px;
+}
+
+/* ------------------------------------------------------------
+   47. Session date group label
+   ------------------------------------------------------------ */
+
+.session-group-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-quaternary);
+  padding: 8px 10px 4px;
+}

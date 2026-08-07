@@ -3,11 +3,11 @@ import {
   computeMemoryFingerprint,
   extractMemoryCandidates
 } from "../../../../packages/core/src/index.js";
-import { rawEventVault } from "../storage/raw-event-vault.js";
-import { factualMemoryStore } from "../storage/factual-memory-store.js";
-import { vectorMemoryStore } from "../storage/vector-memory-store.js";
-import { workingMemoryStore } from "../storage/working-memory-store.js";
-import { redisRuntimeStore } from "../storage/redis-runtime-store.js";
+import { rawEventVault } from "../infrastructure/raw-event-vault.js";
+import { factualMemoryStore } from "../infrastructure/factual-memory-store.js";
+import { vectorMemoryStore } from "../infrastructure/vector-memory-store.js";
+import { workingMemoryStore } from "../infrastructure/working-memory-store.js";
+import { redisRuntimeStore } from "../infrastructure/redis-runtime-store.js";
 import { openAIAdapter } from "./openai-adapter.js";
 
 function mergeAndRankMemories(memories) {
@@ -66,9 +66,6 @@ function buildSeedMemoriesFromEvent(event) {
 }
 
 async function retrieveWorkingSet({ sessionId, message, seedMemories = [] }) {
-  // Filter seed memories — only include ones relevant to the current message.
-  // This prevents memories extracted from the current turn (e.g. "hi") from
-  // injecting unrelated context from previous sessions.
   const trimmedMsg = message.trim().toLowerCase().replace(/[^a-z0-9\s]/g, "");
   const isSmallTalk = trimmedMsg.split(/\s+/).length <= 2 &&
     ["hi","hello","hey","ok","okay","thanks","bye","yes","no","sure","great","cool","good","nice"].some(w => trimmedMsg.includes(w));
@@ -87,8 +84,6 @@ async function retrieveWorkingSet({ sessionId, message, seedMemories = [] }) {
     message
   });
   const recentTurns = await redisRuntimeStore.getRecentTurns(sessionId);
-
-  // Fallback: get previous working memory to preserve data
   const previousWorkingMemory = await workingMemoryStore.read(sessionId);
 
   if (!isSmallTalk && cachedRetrieval?.activeMemories) {
@@ -116,14 +111,19 @@ async function retrieveWorkingSet({ sessionId, message, seedMemories = [] }) {
     rawEventVault.findRecentBySession(sessionId)
   ]);
   const recentContext = recentTurns.length ? recentTurns : rawRecentContext;
+
+  // Carry forward memories already in Redis working memory from the previous turn.
+  // This means memories surfaced by turn N are still available on turn N+1 without
+  // needing another round-trip to Qdrant/Postgres for the same knowledge.
+  const previousMemories = previousWorkingMemory?.activeMemories || [];
+
   const workingSet = mergeAndRankMemories([
     ...relevantSeedMemories,
+    ...previousMemories,
     ...recentFacts,
     ...similarMemories
   ]);
 
-  // For small talk, pass no memories and no recent context to the prompt.
-  // This ensures the LLM responds naturally without parroting prior conversation.
   const finalActiveMemories = isSmallTalk ? [] : (workingSet.length > 0 ? workingSet : []);
   const finalRecentContext = isSmallTalk ? [] : recentContext;
 
@@ -138,7 +138,8 @@ async function retrieveWorkingSet({ sessionId, message, seedMemories = [] }) {
     activeMemories: finalActiveMemories,
     recentContext: finalRecentContext,
     retrievalCache: {
-      hit: false
+      hit: false,
+      carriedForward: previousMemories.length
     }
   });
 
@@ -163,13 +164,11 @@ export const memoryOrchestrator = {
         content: message
       });
       const seedMemories = buildSeedMemoriesFromEvent(userEvent);
-      // Don't use seed memories for small-talk — they pull in prior context
-      // that has nothing to do with the current message (e.g. saying "hi"
-      // would inject memories about the user's name and project).
       const trimmedForSeed = message.trim().toLowerCase().replace(/[^a-z0-9\s]/g, "");
       const isSmallTalkTurn = trimmedForSeed.split(/\s+/).length <= 2 &&
         ["hi","hello","hey","ok","okay","thanks","bye","yes","no","sure","great","cool","good","nice","how are you"].some(w => trimmedForSeed.includes(w));
       const filteredSeedMemories = isSmallTalkTurn ? [] : seedMemories;
+
       await redisRuntimeStore.appendRecentTurn(sessionId, {
         id: userEvent.id,
         role: "user",

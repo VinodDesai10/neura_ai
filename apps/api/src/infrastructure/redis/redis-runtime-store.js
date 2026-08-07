@@ -16,7 +16,6 @@ function hashValue(value) {
 
 function readPositiveNumber(name, fallback) {
   const value = Number(process.env[name]);
-
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
@@ -100,7 +99,6 @@ function getRetrievalTtlSeconds(activeMemories) {
   );
   const minTtl = readPositiveNumber("REDIS_RETRIEVAL_MIN_TTL_SECONDS", 5 * 60);
   const maxTtl = readPositiveNumber("REDIS_RETRIEVAL_MAX_TTL_SECONDS", 2 * 60 * 60);
-
   return Math.round(minTtl + (maxTtl - minTtl) * Math.min(1, topImportance));
 }
 
@@ -216,7 +214,6 @@ export const redisRuntimeStore = {
     const stateKey = getSessionKey(sessionId, "state");
     const state = await getJson(stateKey);
 
-    // If using local fallback, check if expired
     if (!state && localJsonStore.has(stateKey)) {
       const entry = localJsonStore.get(stateKey);
       if (entry.expiresAt && entry.expiresAt <= now()) {
@@ -325,9 +322,8 @@ export const redisRuntimeStore = {
     }
 
     const queue = localLists.get(key) || [];
-    // Limit local queue to prevent unbounded growth
     if (queue.length >= 1000) {
-      queue.shift(); // Remove oldest if exceeding limit
+      queue.shift();
     }
     queue.push(payload);
     localLists.set(key, queue);

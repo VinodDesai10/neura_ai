@@ -1,6 +1,6 @@
-import { ensurePostgresReady, getPostgresClient } from "./postgres-client.js";
+import { ensurePostgresReady, getPostgresClient } from "../postgres/postgres-client.js";
 import { getMongoRawEventsCollection } from "./mongo-client.js";
-import { linkEventToSession } from "./relationship-graph-store.js";
+import { linkEventToSession } from "../neo4j/relationship-graph-store.js";
 
 const rawEvents = [];
 
@@ -55,11 +55,7 @@ export const rawEventVault = {
       return mongoCollection
         .find(
           { sessionId },
-          {
-            projection: {
-              _id: 0
-            }
-          }
+          { projection: { _id: 0 } }
         )
         .sort({ createdAt: -1 })
         .limit(limit)
@@ -101,14 +97,7 @@ export const rawEventVault = {
 
     if (mongoCollection) {
       return mongoCollection
-        .find(
-          {},
-          {
-            projection: {
-              _id: 0
-            }
-          }
-        )
+        .find({}, { projection: { _id: 0 } })
         .sort({ createdAt: 1 })
         .limit(Number(process.env.DEBUG_RAW_EVENT_LIMIT || 200))
         .toArray();

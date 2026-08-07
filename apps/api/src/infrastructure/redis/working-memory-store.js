@@ -13,7 +13,6 @@ function getWorkingMemoryKey(sessionId) {
 
 function readTtlBoundary(name, fallback) {
   const value = Number(process.env[name]);
-
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
@@ -25,7 +24,6 @@ function average(values) {
   if (!values.length) {
     return 0;
   }
-
   return values.reduce((total, value) => total + value, 0) / values.length;
 }
 
@@ -67,7 +65,6 @@ function getFreshnessScore(memories) {
 
   const newestAgeMs = Date.now() - Math.max(...timestamps);
   const oneDayMs = 24 * 60 * 60 * 1000;
-
   return clamp(1 - newestAgeMs / oneDayMs, 0, 1);
 }
 
@@ -92,7 +89,6 @@ export function calculateWorkingMemoryTtlSeconds(payload) {
   const activeMemories = payload.activeMemories || [];
 
   if (!activeMemories.length && !(payload.recentContext || []).length) {
-    // Even if empty, keep for 2 hours to allow data to accumulate
     return Math.min(minTtl, baseTtl);
   }
 
@@ -110,7 +106,6 @@ export function calculateWorkingMemoryTtlSeconds(payload) {
     1
   );
   const ttl = baseTtl + (normalizedMaxTtl - baseTtl) * relevanceScore;
-
   return Math.round(clamp(ttl, minTtl, normalizedMaxTtl));
 }
 
@@ -209,7 +204,6 @@ export const workingMemoryStore = {
       if (payload.expiresAt && Date.parse(payload.expiresAt) <= Date.now()) {
         return false;
       }
-
       return true;
     });
 
