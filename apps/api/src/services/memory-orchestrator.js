@@ -2,7 +2,7 @@ import {
   buildContextPrompt,
   computeMemoryFingerprint,
   extractMemoryCandidates
-} from "../../../../packages/core/src/index.js";
+} from "@neura/core";
 import { rawEventVault } from "../infrastructure/raw-event-vault.js";
 import { factualMemoryStore } from "../infrastructure/factual-memory-store.js";
 import { vectorMemoryStore } from "../infrastructure/vector-memory-store.js";

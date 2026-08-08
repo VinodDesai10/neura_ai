@@ -1,4 +1,4 @@
-import { computeMemoryFingerprint, extractMemoryCandidates } from "../../../../packages/core/src/index.js";
+import { computeMemoryFingerprint, extractMemoryCandidates } from "@neura/core";
 import { memoryOrchestrator } from "../services/memory-orchestrator.js";
 import { redisRuntimeStore } from "../infrastructure/redis-runtime-store.js";
 import { getRedisClient } from "../infrastructure/redis-client.js";

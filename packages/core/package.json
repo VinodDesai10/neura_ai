@@ -10,5 +10,8 @@
     "build": "node -e \"console.log('core build step not required for current runtime')\"",
     "lint": "node -e \"console.log('lint not configured yet')\"",
     "test": "node --test"
+  },
+  "dependencies": {
+    "@neura/shared": "*"
   }
 }

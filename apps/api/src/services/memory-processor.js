@@ -1,7 +1,7 @@
 import {
   computeMemoryFingerprint,
   extractMemoryCandidates
-} from "../../../../packages/core/src/index.js";
+} from "@neura/core";
 import { factualMemoryStore } from "../infrastructure/factual-memory-store.js";
 import { vectorMemoryStore } from "../infrastructure/vector-memory-store.js";
 import { linkMemoryRelationships, linkBatchMemoryRelationships } from "../infrastructure/relationship-graph-store.js";

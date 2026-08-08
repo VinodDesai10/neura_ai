@@ -1,4 +1,4 @@
-import { computeMemoryFingerprint, scoreQueryOverlap } from "../../../../../packages/core/src/index.js";
+import { computeMemoryFingerprint, scoreQueryOverlap } from "@neura/core";
 import {
   ensureQdrantReady,
   isQdrantConfigured,
