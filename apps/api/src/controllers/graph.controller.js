@@ -1,3 +1,10 @@
+/**
+ * controllers/graph.controller.js
+ *
+ * Reads query params, delegates to graph-query service, writes the response.
+ * No business logic lives here.
+ */
+
 import {
   findMemoriesByDomain,
   findMemoriesByEntity,
@@ -5,18 +12,20 @@ import {
   findSimilarMemories,
   getMemoryGraphStats
 } from "../services/graph-query.js";
-import { sendJson } from "../middleware/error-handler.js";
+import { sendJson, withErrorHandler } from "../middleware/error-handler.js";
+import { parseQueryParams } from "../middleware/request.js";
 
-export async function handleGraphByDomain(req, res) {
-  try {
-    const requestUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
-    const sessionId = requestUrl.searchParams.get("sessionId");
-    const domain = requestUrl.searchParams.get("domain");
-    const limit = Number(requestUrl.searchParams.get("limit") || "10");
+export const handleGraphByDomain = withErrorHandler(
+  "Graph query failed",
+  async (req, res) => {
+    const params    = parseQueryParams(req);
+    const sessionId = params.get("sessionId");
+    const domain    = params.get("domain");
+    const limit     = Number(params.get("limit") || "10");
 
     if (!sessionId || !domain) {
       return sendJson(res, 400, {
-        error: "Missing parameters",
+        error:   "Missing parameters",
         message: "sessionId and domain are required"
       });
     }
@@ -25,27 +34,23 @@ export async function handleGraphByDomain(req, res) {
     sendJson(res, 200, {
       domain,
       memories,
-      count: memories.length,
+      count:     memories.length,
       timestamp: new Date().toISOString()
     });
-  } catch (error) {
-    sendJson(res, 500, {
-      error: "Graph query failed",
-      details: error instanceof Error ? error.message : "Unknown error"
-    });
   }
-}
+);
 
-export async function handleGraphByKeyword(req, res) {
-  try {
-    const requestUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
-    const sessionId = requestUrl.searchParams.get("sessionId");
-    const keyword = requestUrl.searchParams.get("keyword");
-    const limit = Number(requestUrl.searchParams.get("limit") || "10");
+export const handleGraphByKeyword = withErrorHandler(
+  "Graph query failed",
+  async (req, res) => {
+    const params    = parseQueryParams(req);
+    const sessionId = params.get("sessionId");
+    const keyword   = params.get("keyword");
+    const limit     = Number(params.get("limit") || "10");
 
     if (!sessionId || !keyword) {
       return sendJson(res, 400, {
-        error: "Missing parameters",
+        error:   "Missing parameters",
         message: "sessionId and keyword are required"
       });
     }
@@ -54,55 +59,47 @@ export async function handleGraphByKeyword(req, res) {
     sendJson(res, 200, {
       keyword,
       memories,
-      count: memories.length,
+      count:     memories.length,
       timestamp: new Date().toISOString()
     });
-  } catch (error) {
-    sendJson(res, 500, {
-      error: "Graph query failed",
-      details: error instanceof Error ? error.message : "Unknown error"
-    });
   }
-}
+);
 
-export async function handleGraphByEntity(req, res) {
-  try {
-    const requestUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
-    const sessionId = requestUrl.searchParams.get("sessionId");
-    const entityValue = requestUrl.searchParams.get("entity");
-    const limit = Number(requestUrl.searchParams.get("limit") || "10");
+export const handleGraphByEntity = withErrorHandler(
+  "Graph query failed",
+  async (req, res) => {
+    const params      = parseQueryParams(req);
+    const sessionId   = params.get("sessionId");
+    const entityValue = params.get("entity");
+    const limit       = Number(params.get("limit") || "10");
 
     if (!sessionId || !entityValue) {
       return sendJson(res, 400, {
-        error: "Missing parameters",
+        error:   "Missing parameters",
         message: "sessionId and entity are required"
       });
     }
 
     const memories = await findMemoriesByEntity(sessionId, entityValue, limit);
     sendJson(res, 200, {
-      entity: entityValue,
+      entity:    entityValue,
       memories,
-      count: memories.length,
+      count:     memories.length,
       timestamp: new Date().toISOString()
     });
-  } catch (error) {
-    sendJson(res, 500, {
-      error: "Graph query failed",
-      details: error instanceof Error ? error.message : "Unknown error"
-    });
   }
-}
+);
 
-export async function handleGraphSimilar(req, res) {
-  try {
-    const requestUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
-    const memoryId = requestUrl.searchParams.get("memoryId");
-    const limit = Number(requestUrl.searchParams.get("limit") || "5");
+export const handleGraphSimilar = withErrorHandler(
+  "Graph query failed",
+  async (req, res) => {
+    const params    = parseQueryParams(req);
+    const memoryId  = params.get("memoryId");
+    const limit     = Number(params.get("limit") || "5");
 
     if (!memoryId) {
       return sendJson(res, 400, {
-        error: "Missing parameters",
+        error:   "Missing parameters",
         message: "memoryId is required"
       });
     }
@@ -111,25 +108,20 @@ export async function handleGraphSimilar(req, res) {
     sendJson(res, 200, {
       memoryId,
       similarMemories: memories,
-      count: memories.length,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error) {
-    sendJson(res, 500, {
-      error: "Graph query failed",
-      details: error instanceof Error ? error.message : "Unknown error"
+      count:           memories.length,
+      timestamp:       new Date().toISOString()
     });
   }
-}
+);
 
-export async function handleGraphStats(req, res) {
-  try {
-    const requestUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
-    const sessionId = requestUrl.searchParams.get("sessionId");
+export const handleGraphStats = withErrorHandler(
+  "Graph query failed",
+  async (req, res) => {
+    const sessionId = parseQueryParams(req).get("sessionId");
 
     if (!sessionId) {
       return sendJson(res, 400, {
-        error: "Missing parameters",
+        error:   "Missing parameters",
         message: "sessionId is required"
       });
     }
@@ -140,10 +132,5 @@ export async function handleGraphStats(req, res) {
       stats,
       timestamp: new Date().toISOString()
     });
-  } catch (error) {
-    sendJson(res, 500, {
-      error: "Graph query failed",
-      details: error instanceof Error ? error.message : "Unknown error"
-    });
   }
-}
+);

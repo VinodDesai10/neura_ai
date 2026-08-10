@@ -1,22 +1,24 @@
-import { memoryOrchestrator } from "../services/memory-orchestrator.js";
-import { checkChatRateLimit } from "../middleware/rate-limit.js";
+/**
+ * controllers/chat.controller.js
+ *
+ * Reads the request, delegates to chat.service, writes the response.
+ * No business logic lives here.
+ */
+
 import { readJsonBody, sendJson } from "../middleware/error-handler.js";
+import { runChatTurn } from "../services/chat.service.js";
 
-export async function handleChat(req, res) {
+export const handleChat = async (req, res) => {
+  let body;
   try {
-    const body = await readJsonBody(req);
-    const rateLimit = await checkChatRateLimit(req, body);
+    body = await readJsonBody(req);
+  } catch {
+    return sendJson(res, 400, { error: "Invalid JSON body" });
+  }
 
-    if (!rateLimit.ok) {
-      return sendJson(res, 429, { error: "Rate limit exceeded", rateLimit });
-    }
-
-    const result = await memoryOrchestrator.handleChatTurn({
-      sessionId: body.sessionId || "demo-session",
-      message: body.message || ""
-    });
-
-    sendJson(res, 200, result);
+  try {
+    const { statusCode, payload } = await runChatTurn(req, body);
+    sendJson(res, statusCode, payload);
   } catch (error) {
     const statusCode = Number(error?.statusCode || 500);
     sendJson(res, statusCode, {
@@ -24,4 +26,4 @@ export async function handleChat(req, res) {
       details: error instanceof Error ? error.message : "Unknown error"
     });
   }
-}
+};

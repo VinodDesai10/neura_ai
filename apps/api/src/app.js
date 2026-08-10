@@ -3,18 +3,21 @@
  *
  * Builds and returns the Node.js HTTP request handler.
  * Responsibilities:
+ *   - Apply per-request middleware (request-id)
  *   - Handle CORS preflight (OPTIONS)
  *   - Dispatch to domain route handlers in order
  *   - Return 404 for unmatched requests
  *
  * No business logic lives here — only wiring.
  */
+
 import { sendJson } from "./middleware/error-handler.js";
+import { attachRequestId } from "./middleware/request-id.js";
 import { healthRoutes } from "./routes/health.routes.js";
-import { chatRoutes } from "./routes/chat.routes.js";
-import { debugRoutes } from "./routes/debug.routes.js";
-import { redisRoutes } from "./routes/redis.routes.js";
-import { graphRoutes } from "./routes/graph.routes.js";
+import { chatRoutes }   from "./routes/chat.routes.js";
+import { debugRoutes }  from "./routes/debug.routes.js";
+import { redisRoutes }  from "./routes/redis.routes.js";
+import { graphRoutes }  from "./routes/graph.routes.js";
 
 /**
  * The ordered list of route handlers. Each is tried in sequence; the first
@@ -30,7 +33,7 @@ const routeHandlers = [
 
 /**
  * @param {import("node:http").IncomingMessage} req
- * @param {import("node:http").ServerResponse} res
+ * @param {import("node:http").ServerResponse}  res
  */
 export function requestHandler(req, res) {
   if (!req.url || !req.method) {
@@ -38,14 +41,16 @@ export function requestHandler(req, res) {
     return;
   }
 
+  // Attach X-Request-Id to every response for client-side log correlation
+  attachRequestId(req, res);
+
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     sendJson(res, 204, {});
     return;
   }
 
-  const requestUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
-  const { pathname } = requestUrl;
+  const { pathname } = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const method = req.method;
 
   for (const handler of routeHandlers) {

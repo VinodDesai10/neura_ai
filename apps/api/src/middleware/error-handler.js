@@ -1,8 +1,18 @@
 /**
  * middleware/error-handler.js
  *
- * Shared HTTP response helpers used by all controllers.
+ * HTTP response helpers and centralised error handling.
+ *
+ * Exports:
+ *   sendJson         – write a JSON response with standard CORS headers
+ *   withErrorHandler – wrap a controller function in a standard try/catch
+ *
+ * readJsonBody and parseQueryParams have been moved to middleware/request.js.
+ * They are re-exported here for backward compatibility so existing controllers
+ * that import from error-handler.js continue to work without changes.
  */
+
+export { readJsonBody, parseQueryParams } from "./request.js";
 
 /**
  * Writes a JSON response with CORS headers.
@@ -16,27 +26,35 @@ export function sendJson(res, statusCode, payload) {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type"
+    "Access-Control-Allow-Headers": "Content-Type, X-Request-Id"
   });
   res.end(JSON.stringify(payload));
 }
 
 /**
- * Reads and parses a JSON request body.
+ * Wraps an async controller function with a standard try/catch.
+ * On error it writes a JSON error response using the error's statusCode
+ * (if present) or 500, and the error's message as `details`.
  *
- * @param {import("node:http").IncomingMessage} req
- * @returns {Promise<object>}
+ * Usage:
+ *   export const handleFoo = withErrorHandler("Foo failed", async (req, res) => {
+ *     // controller body – throw on error, sendJson on success
+ *   });
+ *
+ * @param {string}   errorMessage  – human-readable label for the 500 response
+ * @param {function} fn            – async (req, res) => void
+ * @returns {function}             – async (req, res) => void
  */
-export async function readJsonBody(req) {
-  const chunks = [];
-
-  for await (const chunk of req) {
-    chunks.push(chunk);
-  }
-
-  if (chunks.length === 0) {
-    return {};
-  }
-
-  return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+export function withErrorHandler(errorMessage, fn) {
+  return async (req, res) => {
+    try {
+      await fn(req, res);
+    } catch (error) {
+      const statusCode = Number(error?.statusCode || 500);
+      sendJson(res, statusCode, {
+        error: errorMessage,
+        details: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  };
 }
