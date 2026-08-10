@@ -106,15 +106,21 @@ export async function upsertQdrantPoint(point) {
   });
 }
 
-export async function queryQdrantPoints({ vector, sessionId, limit = 10 }) {
+export async function queryQdrantPoints({ vector, sessionId, limit = 10, strictSession = false }) {
   let payload;
 
   try {
-    // Search cross-session — no sessionId filter — so personal memories
-    // (name, preferences) surface in new sessions via semantic similarity.
+    // When strictSession is true (e.g. dedup checks) we filter to this session only.
+    // When false (default) we search cross-session so personal memories (name, preferences)
+    // can surface in new sessions via semantic similarity.
+    const body = { query: vector, limit, with_payload: true };
+    if (strictSession && sessionId) {
+      body.filter = { must: [{ key: "sessionId", match: { value: sessionId } }] };
+    }
+
     payload = await callQdrant(`/collections/${getCollectionName()}/points/query`, {
       method: "POST",
-      body: JSON.stringify({ query: vector, limit, with_payload: true })
+      body:   JSON.stringify(body)
     });
   } catch (error) {
     if (isMissingCollectionError(error)) {

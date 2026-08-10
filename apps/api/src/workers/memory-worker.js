@@ -13,7 +13,18 @@ function sleep(ms) {
 }
 
 async function processJob(job) {
-  if (!job?.event) {
+  // processEventIntoMemories routes on job.type.
+  // "process-event-into-memories" jobs carry a job.event payload.
+  // "summarise-session" jobs carry job.recentTurns and have no event field.
+  if (!job?.type) {
+    return {
+      stored: 0,
+      skipped: true,
+      reason: "Job missing type field"
+    };
+  }
+
+  if (job.type === "process-event-into-memories" && !job.event) {
     return {
       stored: 0,
       skipped: true,
@@ -21,7 +32,7 @@ async function processJob(job) {
     };
   }
 
-  const stored = await processEventIntoMemories(job.event);
+  const stored = await processEventIntoMemories(job);
 
   return {
     stored: stored.length,

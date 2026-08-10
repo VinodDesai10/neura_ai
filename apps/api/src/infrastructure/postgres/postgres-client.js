@@ -69,6 +69,23 @@ export async function ensurePostgresReady() {
         create index if not exists factual_memories_session_idx
         on factual_memories (session_id)
       `;
+
+      // Full-text search: generated tsvector column + GIN index.
+      // Uses ADD COLUMN IF NOT EXISTS so it is idempotent on an existing DB.
+      await sql`
+        alter table factual_memories
+        add column if not exists search_vector tsvector
+          generated always as (
+            to_tsvector('english',
+              coalesce(content, '') || ' ' || coalesce(summary, '')
+            )
+          ) stored
+      `;
+
+      await sql`
+        create index if not exists factual_memories_fts_idx
+        on factual_memories using gin(search_vector)
+      `;
     })().catch((error) => {
       initPromise = null;
       throw error;

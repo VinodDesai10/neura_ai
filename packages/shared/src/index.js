@@ -346,3 +346,65 @@ export class RateLimitError extends NeuraError {
     this.name = "RateLimitError";
   }
 }
+
+// ─── Retrieval configuration ──────────────────────────────────────────────────
+
+/**
+ * Default values for the hybrid retrieval pipeline.
+ * Every value can be overridden via environment variables.
+ *
+ * @type {{
+ *   topK: number,
+ *   vectorWeight: number,
+ *   lexicalWeight: number,
+ *   importanceWeight: number,
+ *   recencyWeight: number,
+ *   recencyHalfLifeHours: number,
+ *   dedupThreshold: number,
+ *   summaryEveryNTurns: number
+ * }}
+ */
+export const RETRIEVAL_DEFAULTS = {
+  /** Maximum memories returned by findRelevant calls. */
+  topK: 8,
+  /** Weight applied to the Qdrant cosine-similarity score. */
+  vectorWeight: 0.5,
+  /** Weight applied to the lexical / BM25 overlap score. */
+  lexicalWeight: 0.2,
+  /** Weight applied to the stored importance score. */
+  importanceWeight: 0.2,
+  /** Weight applied to the recency-decay factor. */
+  recencyWeight: 0.1,
+  /** Hours for the recency half-life (score halves every N hours). */
+  recencyHalfLifeHours: 72,
+  /** Cosine similarity threshold above which two memories are near-duplicates. */
+  dedupThreshold: 0.92,
+  /** Generate a session-summary memory after every N assistant turns. */
+  summaryEveryNTurns: 20
+};
+
+/**
+ * Read the active retrieval config from environment variables, falling back
+ * to RETRIEVAL_DEFAULTS for any missing value.
+ *
+ * @returns {typeof RETRIEVAL_DEFAULTS}
+ */
+export function readRetrievalConfig() {
+  const env = process.env;
+
+  function num(key, fallback) {
+    const v = Number(env[key]);
+    return Number.isFinite(v) && v > 0 ? v : fallback;
+  }
+
+  return {
+    topK:                  num("RETRIEVAL_TOP_K",                   RETRIEVAL_DEFAULTS.topK),
+    vectorWeight:          num("RETRIEVAL_VECTOR_WEIGHT",           RETRIEVAL_DEFAULTS.vectorWeight),
+    lexicalWeight:         num("RETRIEVAL_LEXICAL_WEIGHT",          RETRIEVAL_DEFAULTS.lexicalWeight),
+    importanceWeight:      num("RETRIEVAL_IMPORTANCE_WEIGHT",       RETRIEVAL_DEFAULTS.importanceWeight),
+    recencyWeight:         num("RETRIEVAL_RECENCY_WEIGHT",          RETRIEVAL_DEFAULTS.recencyWeight),
+    recencyHalfLifeHours:  num("RETRIEVAL_RECENCY_HALF_LIFE_HOURS", RETRIEVAL_DEFAULTS.recencyHalfLifeHours),
+    dedupThreshold:        num("RETRIEVAL_DEDUP_THRESHOLD",         RETRIEVAL_DEFAULTS.dedupThreshold),
+    summaryEveryNTurns:    num("MEMORY_SUMMARY_EVERY_N_TURNS",      RETRIEVAL_DEFAULTS.summaryEveryNTurns)
+  };
+}

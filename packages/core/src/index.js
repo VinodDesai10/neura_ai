@@ -32,7 +32,9 @@ export {
   NeuraError,
   NotFoundError,
   SessionConflictError,
-  RateLimitError
+  RateLimitError,
+  RETRIEVAL_DEFAULTS,
+  readRetrievalConfig
 } from "@neura/shared";
 
 // ─── Local imports from @neura/shared ────────────────────────────────────────
