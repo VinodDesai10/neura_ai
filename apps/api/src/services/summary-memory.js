@@ -16,6 +16,9 @@
 
 import { readRetrievalConfig } from "@neura/shared";
 import { computeMemoryFingerprint } from "@neura/core";
+import { logger } from "../lib/logger.js";
+
+const summaryLog = logger.child({ component: "summary-memory" });
 
 // ─── Trigger check ────────────────────────────────────────────────────────────
 
@@ -89,10 +92,7 @@ export async function generateSummaryMemory({ sessionId, userId, recentTurns, op
   try {
     summaryText = await openAIAdapter.generateResponse(buildSummaryPrompt(recentTurns));
   } catch (err) {
-    console.warn(
-      "Summary generation failed; skipping:",
-      err instanceof Error ? err.message : "Unknown error"
-    );
+    summaryLog.warn({ err }, "Summary generation failed; skipping");
     return null;
   }
 

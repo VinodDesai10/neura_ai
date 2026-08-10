@@ -1,4 +1,7 @@
 import { createClient } from "redis";
+import { logger } from "../../lib/logger.js";
+
+const redisLog = logger.child({ component: "redis-client" });
 
 let redisClient = null;
 let connectPromise = null;
@@ -33,7 +36,7 @@ export async function getRedisClient({ throwOnError = false } = {}) {
     });
 
     redisClient.on("error", (error) => {
-      console.error("Redis client error:", error.message);
+      redisLog.error({ err: error }, "Redis client error");
     });
   }
 

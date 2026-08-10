@@ -1,4 +1,7 @@
 import { redisRuntimeStore } from "../infrastructure/redis-runtime-store.js";
+import { logger } from "../lib/logger.js";
+
+const adapterLog = logger.child({ component: "openai-adapter" });
 
 function buildFallbackReply(prompt) {
   const userLine = prompt
@@ -134,9 +137,9 @@ export const openAIAdapter = {
         encoding_format: "float"
       });
     } catch (error) {
-      console.warn(
-        "Embedding request failed; vector memory will be skipped for this turn:",
-        error instanceof Error ? error.message : "Unknown embedding error"
+      adapterLog.warn(
+        { err: error },
+        "Embedding request failed; vector memory will be skipped for this turn"
       );
       return null;
     }

@@ -1,4 +1,7 @@
 import neo4j from "neo4j-driver";
+import { logger } from "../../lib/logger.js";
+
+const graphLog = logger.child({ component: "relationship-graph-store" });
 
 let driver = null;
 let verifyPromise = null;
@@ -320,10 +323,7 @@ export async function linkBatchMemoryRelationships(memories) {
       await session.close();
     }
   } catch (error) {
-    console.warn(
-      "Neo4j batch relationship write skipped:",
-      error instanceof Error ? error.message : "Unknown Neo4j error"
-    );
+    graphLog.warn({ err: error }, "Neo4j batch relationship write skipped");
     return false;
   }
 }
@@ -366,10 +366,7 @@ export async function linkEventToSession(event) {
       await session.close();
     }
   } catch (error) {
-    console.warn(
-      "Neo4j event relationship write skipped:",
-      error instanceof Error ? error.message : "Unknown Neo4j error"
-    );
+    graphLog.warn({ err: error }, "Neo4j event relationship write skipped");
     return false;
   }
 }
@@ -399,10 +396,7 @@ export async function linkMemoryRelationships(memory) {
       await session.close();
     }
   } catch (error) {
-    console.warn(
-      "Neo4j memory relationship write skipped:",
-      error instanceof Error ? error.message : "Unknown Neo4j error"
-    );
+    graphLog.warn({ err: error }, "Neo4j memory relationship write skipped");
     return false;
   }
 }
@@ -468,10 +462,7 @@ async function linkSimilarMemories(memory) {
       await session.close();
     }
   } catch (error) {
-    console.warn(
-      "Neo4j similarity linking skipped:",
-      error instanceof Error ? error.message : "Unknown error"
-    );
+    graphLog.warn({ err: error }, "Neo4j similarity linking skipped");
     return false;
   }
 }
@@ -511,7 +502,7 @@ export async function findMemoriesByDomain(sessionId, domain, limit = 10) {
       await session.close();
     }
   } catch (error) {
-    console.warn("Neo4j domain query failed:", error instanceof Error ? error.message : "Unknown error");
+    graphLog.warn({ err: error }, "Neo4j domain query failed");
     return [];
   }
 }
@@ -549,7 +540,7 @@ export async function findMemoriesByKeyword(sessionId, keyword, limit = 10) {
       await session.close();
     }
   } catch (error) {
-    console.warn("Neo4j keyword query failed:", error instanceof Error ? error.message : "Unknown error");
+    graphLog.warn({ err: error }, "Neo4j keyword query failed");
     return [];
   }
 }
@@ -589,7 +580,7 @@ export async function findMemoriesByEntity(sessionId, entityValue, limit = 10) {
       await session.close();
     }
   } catch (error) {
-    console.warn("Neo4j entity query failed:", error instanceof Error ? error.message : "Unknown error");
+    graphLog.warn({ err: error }, "Neo4j entity query failed");
     return [];
   }
 }
@@ -626,7 +617,7 @@ export async function findSimilarMemories(memoryId, limit = 5) {
       await session.close();
     }
   } catch (error) {
-    console.warn("Neo4j similarity query failed:", error instanceof Error ? error.message : "Unknown error");
+    graphLog.warn({ err: error }, "Neo4j similarity query failed");
     return [];
   }
 }
@@ -669,7 +660,7 @@ export async function getMemoryGraphStats(sessionId) {
       await session.close();
     }
   } catch (error) {
-    console.warn("Neo4j stats query failed:", error instanceof Error ? error.message : "Unknown error");
+    graphLog.warn({ err: error }, "Neo4j stats query failed");
     return null;
   }
 }

@@ -24,6 +24,9 @@ import { linkBatchMemoryRelationships } from "../infrastructure/relationship-gra
 import { openAIAdapter }              from "./openai-adapter.js";
 import { isSimilarMemory }            from "./deduplication-service.js";
 import { generateSummaryMemory }      from "./summary-memory.js";
+import { logger }                     from "../lib/logger.js";
+
+const processorLog = logger.child({ component: "memory-processor" });
 
 // ─── Module-level embedding cache ────────────────────────────────────────────
 // Avoids re-embedding the same text within a single worker process lifetime.
@@ -91,12 +94,10 @@ async function processEventJob(event) {
       // Pre-check fingerprint to avoid a DB round-trip for exact duplicates
       const dupCheck = isSimilarMemory(candidate, existing);
       if (dupCheck.isDuplicate && dupCheck.reason === "fingerprint") {
-        console.log(JSON.stringify({
-          status: "deduplicated",
-          reason: "fingerprint",
-          sessionId: event.sessionId,
-          fingerprint: candidate.fingerprint
-        }));
+        processorLog.debug(
+          { sessionId: event.sessionId, fingerprint: candidate.fingerprint, reason: "fingerprint" },
+          "memory.deduplicated"
+        );
         continue;
       }
 
@@ -122,13 +123,15 @@ async function processEventJob(event) {
     // Near-duplicate check (embedding cosine similarity)
     const dupCheck = isSimilarMemory(candidate, existing);
     if (dupCheck.isDuplicate) {
-      console.log(JSON.stringify({
-        status:     "deduplicated",
-        reason:     dupCheck.reason,
-        similarity: dupCheck.similarity.toFixed(4),
-        existingId: dupCheck.existingId,
-        sessionId:  event.sessionId
-      }));
+      processorLog.debug(
+        {
+          sessionId:  event.sessionId,
+          reason:     dupCheck.reason,
+          similarity: dupCheck.similarity,
+          existingId: dupCheck.existingId
+        },
+        "memory.deduplicated"
+      );
       continue;
     }
 
