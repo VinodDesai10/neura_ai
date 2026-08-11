@@ -83,14 +83,44 @@ export async function ensureQdrantReady(vectorSize) {
     return true;
   }
 
-  await callQdrantIgnoringAlreadyExists(`/collections/${getCollectionName()}`, {
+  const collectionName = getCollectionName();
+  const distance = process.env.QDRANT_DISTANCE || "Cosine";
+
+  // Check if collection already exists and validate its vector size
+  try {
+    const info = await callQdrant(`/collections/${collectionName}`);
+    const existingSize = info?.result?.config?.params?.vectors?.size;
+
+    if (existingSize && existingSize !== vectorSize) {
+      // Dimension mismatch — delete and recreate with the correct size
+      await callQdrant(`/collections/${collectionName}`, { method: "DELETE" });
+      await callQdrant(`/collections/${collectionName}`, {
+        method: "PUT",
+        body: JSON.stringify({ vectors: { size: vectorSize, distance } })
+      });
+      await callQdrantIgnoringAlreadyExists(`/collections/${collectionName}/index`, {
+        method: "PUT",
+        body: JSON.stringify({ field_name: "sessionId", field_schema: "keyword" })
+      });
+      collectionReady = true;
+      return true;
+    }
+  } catch (error) {
+    // Collection doesn't exist yet — fall through to create it
+    if (!error?.message?.includes("(404)")) {
+      throw error;
+    }
+  }
+
+  // Create collection (no-op if it already exists with correct dimensions)
+  await callQdrantIgnoringAlreadyExists(`/collections/${collectionName}`, {
     method: "PUT",
     body: JSON.stringify({
-      vectors: { size: vectorSize, distance: process.env.QDRANT_DISTANCE || "Cosine" }
+      vectors: { size: vectorSize, distance }
     })
   });
 
-  await callQdrantIgnoringAlreadyExists(`/collections/${getCollectionName()}/index`, {
+  await callQdrantIgnoringAlreadyExists(`/collections/${collectionName}/index`, {
     method: "PUT",
     body: JSON.stringify({ field_name: "sessionId", field_schema: "keyword" })
   });

@@ -9,7 +9,9 @@
     "worker:memory": "node src/workers/memory-worker.js",
     "build": "node -e \"console.log('api build step not required for current runtime')\"",
     "start": "node src/server.js",
-    "lint": "node -e \"console.log('lint not configured yet')\""
+    "lint": "node -e \"console.log('lint not configured yet')\"",
+    "test:retrieval": "node --test test/retrieval-pipeline.test.js",
+    "test": "node --test test/**/*.test.js"
   },
   "dependencies": {
     "@neura/core": "*",

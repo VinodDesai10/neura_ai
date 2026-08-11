@@ -14,6 +14,8 @@
     "dev:api": "npm --workspace @neura/api run dev",
     "worker:memory": "npm --workspace @neura/api run worker:memory",
     "build": "npm run build --workspaces",
-    "lint": "npm run lint --workspaces"
+    "lint": "npm run lint --workspaces",
+    "test:retrieval": "npm --workspace @neura/api run test:retrieval",
+    "test": "npm run test --workspaces --if-present"
   }
 }
