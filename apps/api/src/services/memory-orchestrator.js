@@ -30,6 +30,7 @@ import { redisRuntimeStore }   from "../infrastructure/redis-runtime-store.js";
 import { openAIAdapter }       from "./openai-adapter.js";
 import { deduplicateAndRerank } from "./retrieval-scorer.js";
 import { shouldSummarise }      from "./summary-memory.js";
+import { attachJobMetadata }    from "../queue/job-metadata.js";
 
 // ─── Session state inference ──────────────────────────────────────────────────
 
@@ -187,14 +188,14 @@ export const memoryOrchestrator = {
         content:   message,
         createdAt: userEvent.createdAt
       });
-      await redisRuntimeStore.enqueueMemoryJob({
+      await redisRuntimeStore.enqueueMemoryJob(attachJobMetadata({
         type:      "process-event-into-memories",
         sessionId,
         userId:    userId || null,
         eventId:   userEvent.id,
         role:      userEvent.role,
         event:     userEvent
-      });
+      }));
 
       // ── Retrieve working set ────────────────────────────────────────────
       const workingMemory = await retrieveWorkingSet({
@@ -225,14 +226,14 @@ export const memoryOrchestrator = {
         content:   reply,
         createdAt: assistantEvent.createdAt
       });
-      await redisRuntimeStore.enqueueMemoryJob({
+      await redisRuntimeStore.enqueueMemoryJob(attachJobMetadata({
         type:      "process-event-into-memories",
         sessionId,
         userId:    userId || null,
         eventId:   assistantEvent.id,
         role:      assistantEvent.role,
         event:     assistantEvent
-      });
+      }));
 
       // ── Summarisation trigger ───────────────────────────────────────────
       // Increment per-session assistant turn counter and check threshold
@@ -242,12 +243,12 @@ export const memoryOrchestrator = {
 
       if (shouldSummarise(assistantTurns)) {
         const recentTurns = await redisRuntimeStore.getRecentTurns(sessionId);
-        await redisRuntimeStore.enqueueMemoryJob({
+        await redisRuntimeStore.enqueueMemoryJob(attachJobMetadata({
           type:        "summarise-session",
           sessionId,
           userId:      userId || null,
           recentTurns
-        });
+        }));
       }
 
       return {
