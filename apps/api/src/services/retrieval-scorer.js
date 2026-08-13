@@ -4,14 +4,23 @@
  * Pure, stateless scoring engine for the hybrid retrieval pipeline.
  *
  * Responsibilities:
- *   - applyRecencyDecay   – time-based score decay (configurable half-life)
- *   - computeHybridScore  – weighted combination of vector, lexical, importance, recency
- *   - deduplicateAndRerank – merge memory lists, deduplicate by fingerprint, rerank by score
+ *   - applyRecencyDecay             – time-based score decay (configurable half-life)
+ *   - applyTopicalRelevancePenalty  – down-rank memories with very low semantic/lexical relevance
+ *   - computeHybridScore            – weighted combination of vector, lexical, importance, recency
+ *   - deduplicateAndRerank          – merge memory lists, deduplicate by fingerprint, rerank by score
+ *
+ * Instrumentation:
+ *   - rerankerRequestsTotal  – incremented on every deduplicateAndRerank() call
+ *   - rerankerDurationSeconds – histogram of deduplicateAndRerank() wall time
  *
  * No database calls, no side effects. All functions are safe to unit-test in isolation.
  */
 
 import { readRetrievalConfig } from "@neura/shared";
+import {
+  rerankerRequestsTotal,
+  rerankerDurationSeconds
+} from "../lib/metrics.js";
 
 // ─── Recency decay ─────────────────────────────────────────────────────────────
 
@@ -42,6 +51,52 @@ export function applyRecencyDecay(timestamp, halfLifeHours) {
   return Math.exp(-lambda * cappedAge);
 }
 
+// ─── Topical relevance penalty ─────────────────────────────────────────────────
+
+/**
+ * Apply a topical relevance penalty to a hybrid score.
+ *
+ * Motivation: the weighted formula can let a high-importance memory
+ * (importanceWeight × 0.85 ≈ 0.17) outrank a genuinely relevant memory
+ * when both its vector and lexical scores are near zero.  This helper
+ * detects that pattern and multiplies the final score by a configurable
+ * penalty factor so off-topic memories are strongly down-ranked.
+ *
+ * The penalty is feature-flagged via `config.topicalPenalty.enabled` so
+ * existing deployments are unaffected until they set
+ * RETRIEVAL_TOPICAL_PENALTY_ENABLED=true.
+ *
+ * @param {{
+ *   vectorScore:  number,  – normalised vector score (0-1)
+ *   keywordScore: number,  – normalised lexical score (0-1)
+ *   finalScore:   number,  – weighted hybrid score before penalty
+ *   config:       object   – full retrieval config (must contain topicalPenalty)
+ * }} params
+ * @returns {number}  penalised (or unchanged) score
+ */
+export function applyTopicalRelevancePenalty({ vectorScore, keywordScore, finalScore, config }) {
+  const penalty = config?.topicalPenalty;
+
+  // Feature flag off, or no penalty config → pass through unchanged
+  if (!penalty?.enabled) return finalScore;
+
+  // Relevance = best signal from either retrieval channel
+  const relevance = Math.max(vectorScore || 0, keywordScore || 0);
+
+  let multiplier = 1;
+
+  if (relevance < penalty.lowThreshold) {
+    // Very low relevance — heavy penalty (e.g. 0.10 × score)
+    multiplier = penalty.lowPenalty;
+  } else if (relevance < penalty.highThreshold) {
+    // Moderate relevance — medium penalty (e.g. 0.50 × score)
+    multiplier = penalty.mediumPenalty;
+  }
+  // relevance >= highThreshold → no penalty (multiplier stays 1)
+
+  return finalScore * multiplier;
+}
+
 // ─── Hybrid score ──────────────────────────────────────────────────────────────
 
 /**
@@ -62,7 +117,8 @@ export function applyRecencyDecay(timestamp, halfLifeHours) {
  *   lexicalScore:     number,
  *   importanceScore:  number,
  *   recencyScore:     number,
- *   sessionBonus:     number
+ *   sessionBonus:     number,
+ *   topicalPenaltyApplied: boolean
  * }}
  */
 export function computeHybridScore(
@@ -83,20 +139,30 @@ export function computeHybridScore(
   // Bonus for memories from the same session (small tiebreaker)
   const sessionBonus = sessionId === querySessionId ? 0.04 : 0;
 
-  const score =
+  const rawScore =
     normVector     * config.vectorWeight      +
     normLexical    * config.lexicalWeight     +
     normImportance * config.importanceWeight  +
     recency        * config.recencyWeight     +
     sessionBonus;
 
+  // Apply topical relevance penalty when enabled via feature flag
+  const penaltyEnabled  = config?.topicalPenalty?.enabled ?? false;
+  const penalisedScore  = applyTopicalRelevancePenalty({
+    vectorScore:  normVector,
+    keywordScore: normLexical,
+    finalScore:   rawScore,
+    config
+  });
+
   return {
-    score:           Math.min(1, score),
-    vectorScore:     normVector,
-    lexicalScore:    normLexical,
-    importanceScore: normImportance,
-    recencyScore:    recency,
-    sessionBonus
+    score:                 Math.min(1, penalisedScore),
+    vectorScore:           normVector,
+    lexicalScore:          normLexical,
+    importanceScore:       normImportance,
+    recencyScore:          recency,
+    sessionBonus,
+    topicalPenaltyApplied: penaltyEnabled && penalisedScore !== rawScore
   };
 }
 
@@ -122,6 +188,10 @@ export function computeHybridScore(
 export function deduplicateAndRerank(memories, context, cfg) {
   const config     = cfg ?? readRetrievalConfig();
   const { querySessionId, scoredEntries = [] } = context;
+
+  // Track reranker invocations and wall time
+  rerankerRequestsTotal.inc();
+  const startNs = process.hrtime.bigint();
 
   // Build a lookup: memoryId → {vectorScore, lexicalScore} from store-level scoring
   const scoreMap = new Map(
@@ -175,8 +245,17 @@ export function deduplicateAndRerank(memories, context, cfg) {
     };
   });
 
-  return scored
+  const result = scored
     .sort((a, b) => b.score - a.score)
     .slice(0, config.topK)
     .map((e) => e.memory);
+
+  // Record reranker duration
+  try {
+    rerankerDurationSeconds.observe(Number(process.hrtime.bigint() - startNs) / 1e9);
+  } catch {
+    // Instrumentation must never break retrieval
+  }
+
+  return result;
 }

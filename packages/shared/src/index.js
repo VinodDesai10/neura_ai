@@ -361,7 +361,14 @@ export class RateLimitError extends NeuraError {
  *   recencyWeight: number,
  *   recencyHalfLifeHours: number,
  *   dedupThreshold: number,
- *   summaryEveryNTurns: number
+ *   summaryEveryNTurns: number,
+ *   topicalPenalty: {
+ *     enabled: boolean,
+ *     lowThreshold: number,
+ *     highThreshold: number,
+ *     lowPenalty: number,
+ *     mediumPenalty: number
+ *   }
  * }}
  */
 export const RETRIEVAL_DEFAULTS = {
@@ -380,7 +387,32 @@ export const RETRIEVAL_DEFAULTS = {
   /** Cosine similarity threshold above which two memories are near-duplicates. */
   dedupThreshold: 0.92,
   /** Generate a session-summary memory after every N assistant turns. */
-  summaryEveryNTurns: 20
+  summaryEveryNTurns: 20,
+  /**
+   * Topical relevance penalty configuration.
+   *
+   * When enabled, memories whose maximum(vectorScore, normLexicalScore)
+   * falls below `lowThreshold` receive a `lowPenalty` multiplier and those
+   * below `highThreshold` receive a `mediumPenalty` multiplier.  This
+   * prevents high-importance but topically unrelated memories from
+   * polluting the context window.
+   *
+   * Feature-flagged via RETRIEVAL_TOPICAL_PENALTY_ENABLED.
+   * Set the env var to "true" (or "1") to activate.  Off by default so
+   * existing deployments are unaffected without an explicit opt-in.
+   */
+  topicalPenalty: {
+    /** Feature flag — disabled by default; set RETRIEVAL_TOPICAL_PENALTY_ENABLED=true to enable. */
+    enabled:       false,
+    /** Max(vectorScore, normLexicalScore) below this → apply lowPenalty. */
+    lowThreshold:  0.15,
+    /** Max(vectorScore, normLexicalScore) below this (but ≥ lowThreshold) → apply mediumPenalty. */
+    highThreshold: 0.30,
+    /** Multiplier applied when relevance < lowThreshold  (e.g. 0.1 = 90% penalty). */
+    lowPenalty:    0.10,
+    /** Multiplier applied when relevance < highThreshold (e.g. 0.5 = 50% penalty). */
+    mediumPenalty: 0.50
+  }
 };
 
 /**
@@ -397,6 +429,11 @@ export function readRetrievalConfig() {
     return Number.isFinite(v) && v > 0 ? v : fallback;
   }
 
+  // Parse the topical-penalty feature flag.
+  // Accepts "true", "1", "yes" (case-insensitive); anything else → false.
+  const penaltyEnabledRaw = String(env["RETRIEVAL_TOPICAL_PENALTY_ENABLED"] ?? "").toLowerCase();
+  const penaltyEnabled    = penaltyEnabledRaw === "true" || penaltyEnabledRaw === "1" || penaltyEnabledRaw === "yes";
+
   return {
     topK:                  num("RETRIEVAL_TOP_K",                   RETRIEVAL_DEFAULTS.topK),
     vectorWeight:          num("RETRIEVAL_VECTOR_WEIGHT",           RETRIEVAL_DEFAULTS.vectorWeight),
@@ -405,6 +442,13 @@ export function readRetrievalConfig() {
     recencyWeight:         num("RETRIEVAL_RECENCY_WEIGHT",          RETRIEVAL_DEFAULTS.recencyWeight),
     recencyHalfLifeHours:  num("RETRIEVAL_RECENCY_HALF_LIFE_HOURS", RETRIEVAL_DEFAULTS.recencyHalfLifeHours),
     dedupThreshold:        num("RETRIEVAL_DEDUP_THRESHOLD",         RETRIEVAL_DEFAULTS.dedupThreshold),
-    summaryEveryNTurns:    num("MEMORY_SUMMARY_EVERY_N_TURNS",      RETRIEVAL_DEFAULTS.summaryEveryNTurns)
+    summaryEveryNTurns:    num("MEMORY_SUMMARY_EVERY_N_TURNS",      RETRIEVAL_DEFAULTS.summaryEveryNTurns),
+    topicalPenalty: {
+      enabled:       penaltyEnabled,
+      lowThreshold:  num("RETRIEVAL_TOPICAL_PENALTY_LOW_THRESHOLD",  RETRIEVAL_DEFAULTS.topicalPenalty.lowThreshold),
+      highThreshold: num("RETRIEVAL_TOPICAL_PENALTY_HIGH_THRESHOLD", RETRIEVAL_DEFAULTS.topicalPenalty.highThreshold),
+      lowPenalty:    num("RETRIEVAL_TOPICAL_PENALTY_LOW_FACTOR",     RETRIEVAL_DEFAULTS.topicalPenalty.lowPenalty),
+      mediumPenalty: num("RETRIEVAL_TOPICAL_PENALTY_MEDIUM_FACTOR",  RETRIEVAL_DEFAULTS.topicalPenalty.mediumPenalty)
+    }
   };
 }

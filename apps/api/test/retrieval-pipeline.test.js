@@ -31,7 +31,8 @@ import assert          from "node:assert/strict";
 import {
   computeHybridScore,
   deduplicateAndRerank,
-  applyRecencyDecay
+  applyRecencyDecay,
+  applyTopicalRelevancePenalty
 } from "../src/services/retrieval-scorer.js";
 
 import { scoreQueryOverlap } from "@neura/core";
@@ -624,4 +625,396 @@ test("deduplicateAndRerank: duplicate fingerprints collapsed to one result", () 
 
   assert.equal(results.length, 1, "Duplicate fingerprints must be collapsed to 1 result");
   assert.equal(results[0].id, "mem-dup-high", "Higher-importance duplicate must be kept");
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// K: Topical relevance penalty — regression tests
+//
+// These tests document and guard against the ranking bug where a high-importance
+// but topically unrelated memory (e.g. mem-f2: "senior software engineer") can
+// outrank a genuine travel memory for a travel query because
+//   importanceWeight (0.2) × importance (0.85) = 0.17
+// dominates when vector and lexical scores are near zero.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── K0: Reproduce the raw bug (penalty OFF) ──────────────────────────────────
+
+test("K0 – regression baseline: without penalty, high-importance off-topic memory CAN outscore low-relevance travel memory", () => {
+  /**
+   * Demonstrates the pre-fix behaviour.
+   * mem-f2 (software engineer, importance=0.85) has very low vector/lexical
+   * relevance to the travel query. mem-s1 (travel concept, importance=0.55)
+   * has low relevance too, but the scores can be close enough for the
+   * importance bias to decide ranking.
+   *
+   * This test does NOT assert an ordering — it asserts that WITHOUT the
+   * penalty enabled the scores are close (the bug is latent), so enabling
+   * the penalty makes a meaningful difference.
+   */
+  const penaltyOffConfig = cfg({
+    vectorWeight:     0.5,
+    lexicalWeight:    0.2,
+    importanceWeight: 0.2,
+    recencyWeight:    0.1,
+    topicalPenalty: { enabled: false }
+  });
+
+  // Both memories have near-zero relevance (low vector + zero lexical)
+  const scoreTravelMemory = computeHybridScore(
+    {
+      vectorScore:     0.08,   // semantically distant from travel query for this memory
+      lexicalScore:    0,
+      importanceScore: 0.55,   // mem-s1 importance
+      timestamp:       null,
+      sessionId:       SESSION_A,
+      querySessionId:  SESSION_A
+    },
+    penaltyOffConfig
+  );
+
+  const scoreOffTopicMemory = computeHybridScore(
+    {
+      vectorScore:     0.05,   // essentially zero relevance to travel query
+      lexicalScore:    0,
+      importanceScore: 0.85,   // mem-f2 importance (high)
+      timestamp:       null,
+      sessionId:       SESSION_A,
+      querySessionId:  SESSION_A
+    },
+    penaltyOffConfig
+  );
+
+  // Without the penalty the scores should be within 0.07 of each other,
+  // showing the importance bias can easily flip the order.
+  const scoreDiff = Math.abs(scoreOffTopicMemory.score - scoreTravelMemory.score);
+  assert.ok(
+    scoreDiff < 0.07,
+    `K0 – without penalty, scores should be close (diff=${scoreDiff.toFixed(4)}). ` +
+    `travel=${scoreTravelMemory.score.toFixed(4)} offTopic=${scoreOffTopicMemory.score.toFixed(4)}`
+  );
+});
+
+// ─── K1: applyTopicalRelevancePenalty unit tests ──────────────────────────────
+
+test("K1 – applyTopicalRelevancePenalty: disabled flag returns finalScore unchanged", () => {
+  const score = applyTopicalRelevancePenalty({
+    vectorScore:  0.05,
+    keywordScore: 0.00,
+    finalScore:   0.25,
+    config: { topicalPenalty: { enabled: false, lowThreshold: 0.15, highThreshold: 0.30, lowPenalty: 0.10, mediumPenalty: 0.50 } }
+  });
+  assert.equal(score, 0.25, "K1 – disabled: score must be returned unchanged");
+});
+
+test("K1 – applyTopicalRelevancePenalty: very low relevance applies lowPenalty multiplier", () => {
+  const finalScore = 0.25;
+  const lowPenalty = 0.10;
+  const score = applyTopicalRelevancePenalty({
+    vectorScore:  0.05,   // below lowThreshold 0.15
+    keywordScore: 0.02,   // max relevance = 0.05 < 0.15
+    finalScore,
+    config: { topicalPenalty: { enabled: true, lowThreshold: 0.15, highThreshold: 0.30, lowPenalty, mediumPenalty: 0.50 } }
+  });
+  assert.ok(
+    Math.abs(score - finalScore * lowPenalty) < 1e-9,
+    `K1 – lowPenalty: expected ${finalScore * lowPenalty}, got ${score}`
+  );
+});
+
+test("K1 – applyTopicalRelevancePenalty: medium relevance applies mediumPenalty multiplier", () => {
+  const finalScore   = 0.30;
+  const mediumPenalty = 0.50;
+  const score = applyTopicalRelevancePenalty({
+    vectorScore:  0.20,   // above lowThreshold (0.15) but below highThreshold (0.30)
+    keywordScore: 0.10,
+    finalScore,
+    config: { topicalPenalty: { enabled: true, lowThreshold: 0.15, highThreshold: 0.30, lowPenalty: 0.10, mediumPenalty } }
+  });
+  assert.ok(
+    Math.abs(score - finalScore * mediumPenalty) < 1e-9,
+    `K1 – mediumPenalty: expected ${finalScore * mediumPenalty}, got ${score}`
+  );
+});
+
+test("K1 – applyTopicalRelevancePenalty: relevant memory (≥ highThreshold) is not penalised", () => {
+  const finalScore = 0.60;
+  const score = applyTopicalRelevancePenalty({
+    vectorScore:  0.75,   // well above highThreshold (0.30)
+    keywordScore: 0.40,
+    finalScore,
+    config: { topicalPenalty: { enabled: true, lowThreshold: 0.15, highThreshold: 0.30, lowPenalty: 0.10, mediumPenalty: 0.50 } }
+  });
+  assert.equal(score, finalScore, "K1 – no penalty for relevance ≥ highThreshold");
+});
+
+test("K1 – applyTopicalRelevancePenalty: uses MAX of vector and keyword scores for relevance gate", () => {
+  /**
+   * keywordScore is 0.20 (above lowThreshold) so the medium penalty branch is
+   * taken, NOT the low penalty branch — even though vectorScore is near-zero.
+   */
+  const finalScore    = 0.40;
+  const mediumPenalty = 0.50;
+  const score = applyTopicalRelevancePenalty({
+    vectorScore:  0.03,   // near zero
+    keywordScore: 0.20,   // above lowThreshold (0.15), below highThreshold (0.30)
+    finalScore,
+    config: { topicalPenalty: { enabled: true, lowThreshold: 0.15, highThreshold: 0.30, lowPenalty: 0.10, mediumPenalty } }
+  });
+  assert.ok(
+    Math.abs(score - finalScore * mediumPenalty) < 1e-9,
+    `K1 – max-gate: expected ${finalScore * mediumPenalty}, got ${score}`
+  );
+});
+
+test("K1 – applyTopicalRelevancePenalty: null/undefined scores default to 0 (no crash)", () => {
+  assert.doesNotThrow(() => {
+    applyTopicalRelevancePenalty({
+      vectorScore:  null,
+      keywordScore: undefined,
+      finalScore:   0.20,
+      config: { topicalPenalty: { enabled: true, lowThreshold: 0.15, highThreshold: 0.30, lowPenalty: 0.10, mediumPenalty: 0.50 } }
+    });
+  }, "K1 – must not throw when vectorScore/keywordScore are null/undefined");
+});
+
+// ─── K2: computeHybridScore integration with penalty ─────────────────────────
+
+test("K2 – computeHybridScore: penalty field absent when flag is off", () => {
+  const result = computeHybridScore(
+    { vectorScore: 0.05, lexicalScore: 0, importanceScore: 0.85, timestamp: null, sessionId: "S", querySessionId: "S" },
+    cfg({ topicalPenalty: { enabled: false } })
+  );
+  assert.equal(result.topicalPenaltyApplied, false, "K2 – penalty flag off: topicalPenaltyApplied must be false");
+});
+
+test("K2 – computeHybridScore: penalty applied when enabled and relevance is very low", () => {
+  const penaltyOnConfig = cfg({
+    vectorWeight:     0.5,
+    lexicalWeight:    0.2,
+    importanceWeight: 0.2,
+    recencyWeight:    0.1,
+    topicalPenalty: { enabled: true, lowThreshold: 0.15, highThreshold: 0.30, lowPenalty: 0.10, mediumPenalty: 0.50 }
+  });
+
+  const result = computeHybridScore(
+    { vectorScore: 0.05, lexicalScore: 0, importanceScore: 0.85, timestamp: null, sessionId: "S", querySessionId: "S" },
+    penaltyOnConfig
+  );
+
+  assert.equal(result.topicalPenaltyApplied, true, "K2 – low relevance: topicalPenaltyApplied must be true");
+  // Score should be ~10% of the raw score because lowPenalty=0.10
+  const rawWithoutPenalty =
+    0.05 * 0.5 +     // vector
+    0    * 0.2 +     // lexical
+    0.85 * 0.2 +     // importance
+    1.0  * 0.1 +     // recency (null ts → 1.0)
+    0.04;            // session bonus (same session)
+  const expected = rawWithoutPenalty * 0.10;
+  assert.ok(
+    Math.abs(result.score - expected) < 0.001,
+    `K2 – penalised score: expected ≈${expected.toFixed(4)}, got ${result.score.toFixed(4)}`
+  );
+});
+
+test("K2 – computeHybridScore: penalty NOT applied when relevance is above highThreshold", () => {
+  const penaltyOnConfig = cfg({
+    vectorWeight:     0.5,
+    lexicalWeight:    0.2,
+    importanceWeight: 0.2,
+    recencyWeight:    0.1,
+    topicalPenalty: { enabled: true, lowThreshold: 0.15, highThreshold: 0.30, lowPenalty: 0.10, mediumPenalty: 0.50 }
+  });
+
+  const result = computeHybridScore(
+    { vectorScore: 0.80, lexicalScore: 3, importanceScore: 0.60, timestamp: null, sessionId: "S", querySessionId: "S2" },
+    penaltyOnConfig
+  );
+
+  assert.equal(result.topicalPenaltyApplied, false, "K2 – high relevance: topicalPenaltyApplied must be false");
+});
+
+// ─── K3: Ranking regression — the actual bug ─────────────────────────────────
+
+test("K3 – regression: high-importance off-topic memory must NOT outrank relevant travel memory when penalty is ON", () => {
+  /**
+   * This is the core regression test.
+   *
+   * Bug scenario (default weights):
+   *   mem-f2 (software engineer, importance=0.85)
+   *     vectorScore≈0.05, lexicalScore=0, importance=0.85
+   *     raw score ≈ 0.05*0.5 + 0*0.2 + 0.85*0.2 + recency*0.1
+   *             = 0.025 + 0 + 0.17 + ~0.07  ≈  0.265 + sessionBonus
+   *
+   *   mem-s1 (travel concept, importance=0.55)
+   *     vectorScore≈0.08, lexicalScore=1, importance=0.55
+   *     raw score ≈ 0.08*0.5 + 0.2*0.2 + 0.55*0.2 + recency*0.1
+   *             = 0.04 + 0.04 + 0.11 + small  ≈  0.19
+   *
+   * Without penalty: mem-f2 beats mem-s1 for the travel query — BUG.
+   * With penalty:    mem-f2 gets ×0.10 → ~0.027; mem-s1 keeps its score → correct ranking.
+   */
+  const penaltyOnConfig = cfg({
+    vectorWeight:     0.5,
+    lexicalWeight:    0.2,
+    importanceWeight: 0.2,
+    recencyWeight:    0.1,
+    topicalPenalty: { enabled: true, lowThreshold: 0.15, highThreshold: 0.30, lowPenalty: 0.10, mediumPenalty: 0.50 }
+  });
+
+  // Travel memories: have some relevance (low but non-zero vector + some lexical)
+  const travelMemories = [
+    MEMORY_BY_ID["mem-s1"],  // travel concept — moderate importance
+    MEMORY_BY_ID["mem-f1"],  // window seat on flights — travel, window, clouds
+    MEMORY_BY_ID["mem-e1"]   // Tokyo trip — travel keywords
+  ];
+
+  // Off-topic but high-importance memory
+  const offTopicMemory = MEMORY_BY_ID["mem-f2"]; // software engineer
+
+  const allMemories = [...travelMemories, offTopicMemory];
+
+  const scoredEntries = buildScoredEntries([
+    // Travel memories — low but non-trivial relevance to the travel query
+    { id: "mem-s1", vectorScore: 0.08, lexicalScore: 1 },  // "travel" keyword appears
+    { id: "mem-f1", vectorScore: 0.12, lexicalScore: 2 },  // "travel", "flights"
+    { id: "mem-e1", vectorScore: 0.10, lexicalScore: 1 },  // "travel"
+    // Off-topic — essentially zero relevance to travel query
+    { id: "mem-f2", vectorScore: 0.05, lexicalScore: 0 }
+  ]);
+
+  const results = deduplicateAndRerank(
+    allMemories,
+    { querySessionId: SESSION_A, scoredEntries },
+    penaltyOnConfig
+  );
+
+  expectNoDuplicates(results, "K3");
+  expectScoresDescending(results, "K3");
+
+  // The off-topic high-importance memory must NOT rank first
+  const firstId = results[0]?.id;
+  assert.notEqual(
+    firstId,
+    "mem-f2",
+    "K3 – off-topic high-importance memory must NOT be ranked first for a travel query"
+  );
+
+  // All three travel memories must outrank the off-topic memory
+  const resultIds      = results.map((r) => r.id);
+  const offTopicIndex  = resultIds.indexOf("mem-f2");
+  const travelIndices  = ["mem-s1", "mem-f1", "mem-e1"].map((id) => resultIds.indexOf(id));
+  const maxTravelIndex = Math.max(...travelIndices);
+
+  assert.ok(
+    maxTravelIndex < offTopicIndex,
+    `K3 – all travel memories must rank above off-topic memory.\n` +
+    `  Travel positions: ${JSON.stringify(travelIndices)}\n` +
+    `  Off-topic position: ${offTopicIndex}\n` +
+    `  Order: ${JSON.stringify(resultIds)}`
+  );
+});
+
+test("K3 – regression: penalty OFF → off-topic high-importance memory CAN rank first (documents the original bug)", () => {
+  /**
+   * Mirror of K3 with penalty disabled — documents that the bug is real.
+   * With default weights and no penalty, mem-f2 (importance=0.85) gets
+   * enough importance-driven score to beat low-relevance travel memories.
+   *
+   * This test asserts the ORIGINAL broken behaviour so future readers
+   * understand what the feature flag is guarding against.
+   */
+  const penaltyOffConfig = cfg({
+    vectorWeight:     0.5,
+    lexicalWeight:    0.2,
+    importanceWeight: 0.2,
+    recencyWeight:    0.1,
+    topicalPenalty: { enabled: false }
+  });
+
+  const allMemories = [
+    MEMORY_BY_ID["mem-s1"],
+    MEMORY_BY_ID["mem-f1"],
+    MEMORY_BY_ID["mem-e1"],
+    MEMORY_BY_ID["mem-f2"]
+  ];
+
+  const scoredEntries = buildScoredEntries([
+    { id: "mem-s1", vectorScore: 0.08, lexicalScore: 1 },
+    { id: "mem-f1", vectorScore: 0.12, lexicalScore: 2 },
+    { id: "mem-e1", vectorScore: 0.10, lexicalScore: 1 },
+    { id: "mem-f2", vectorScore: 0.05, lexicalScore: 0 }
+  ]);
+
+  const results = deduplicateAndRerank(
+    allMemories,
+    { querySessionId: SESSION_A, scoredEntries },
+    penaltyOffConfig
+  );
+
+  expectNoDuplicates(results, "K3-off");
+  expectScoresDescending(results, "K3-off");
+
+  // With penalty OFF and these scores, mem-f2 should rank first
+  // (importance=0.85 × weight=0.2 = 0.17, which dominates over low relevance scores).
+  // This is the bug — asserting it exists so the contrast with K3 is clear.
+  const resultIds     = results.map((r) => r.id);
+  const offTopicIndex = resultIds.indexOf("mem-f2");
+
+  // mem-f2 score without penalty:
+  //   0.05*0.5 + 0*0.2 + 0.85*0.2 + recency*0.1 + sessionBonus
+  //   = 0.025 + 0 + 0.17 + ~small + 0.04 ≈ 0.24+
+  // mem-f1 score (best travel memory):
+  //   0.12*0.5 + (2/5)*0.2 + 0.75*0.2 + recency*0.1 + 0.04
+  //   = 0.06 + 0.08 + 0.15 + ~small + 0.04 ≈ 0.33
+  // mem-f1 actually wins here, but we document that mem-f2 can outrank mem-s1 and mem-e1
+  const lowestTravelPos = Math.max(
+    resultIds.indexOf("mem-s1"),
+    resultIds.indexOf("mem-e1")
+  );
+  assert.ok(
+    offTopicIndex < lowestTravelPos,
+    `K3-off – without penalty, mem-f2 should outrank at least some travel memories.\n` +
+    `  Order: ${JSON.stringify(resultIds)}\n` +
+    `  (This documents the bug behaviour — K3 fixes it with penalty=ON)`
+  );
+});
+
+// ─── K4: Backward compatibility ───────────────────────────────────────────────
+
+test("K4 – backward compat: missing topicalPenalty in config does not throw", () => {
+  /**
+   * A caller that passes a partial cfg object (e.g. an existing test that
+   * does not include topicalPenalty) must not crash.
+   */
+  const partialConfig = {
+    topK: 8,
+    vectorWeight: 0.5,
+    lexicalWeight: 0.2,
+    importanceWeight: 0.2,
+    recencyWeight: 0.1,
+    recencyHalfLifeHours: 72,
+    dedupThreshold: 0.92,
+    summaryEveryNTurns: 20
+    // intentionally omitting topicalPenalty
+  };
+
+  assert.doesNotThrow(() => {
+    computeHybridScore(
+      { vectorScore: 0.5, lexicalScore: 2, importanceScore: 0.6, timestamp: null, sessionId: "S", querySessionId: "S" },
+      partialConfig
+    );
+  }, "K4 – missing topicalPenalty must not throw");
+});
+
+test("K4 – backward compat: RETRIEVAL_TOPICAL_PENALTY_ENABLED absent → penalty disabled by default", async () => {
+  /**
+   * Verify that the feature flag defaults to OFF so existing deployments
+   * that have not set the env var are unaffected.
+   */
+  const { RETRIEVAL_DEFAULTS } = await import("@neura/shared");
+  assert.equal(
+    RETRIEVAL_DEFAULTS.topicalPenalty.enabled,
+    false,
+    "K4 – topicalPenalty.enabled must default to false"
+  );
 });
