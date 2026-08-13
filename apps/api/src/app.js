@@ -14,6 +14,7 @@
 import pinoHttp from "pino-http";
 import { sendJson } from "./middleware/error-handler.js";
 import { attachRequestId } from "./middleware/request-id.js";
+import { metricsMiddleware } from "./middleware/metrics-middleware.js";
 import { logger } from "./lib/logger.js";
 import { healthRoutes } from "./routes/health.routes.js";
 import { chatRoutes }   from "./routes/chat.routes.js";
@@ -112,6 +113,10 @@ export function requestHandler(req, res) {
   //    one structured log line after res.end() with method, url, statusCode,
   //    responseTime, and requestId.
   httpLogger(req, res);
+
+  // 3. Prometheus HTTP instrumentation — hooks res.end to capture final status
+  //    and duration.  Must run after attachRequestId and before dispatch.
+  metricsMiddleware(req, res);
 
   // Handle CORS preflight
   if (req.method === "OPTIONS") {

@@ -31,6 +31,11 @@ import { openAIAdapter }       from "./openai-adapter.js";
 import { deduplicateAndRerank } from "./retrieval-scorer.js";
 import { shouldSummarise }      from "./summary-memory.js";
 import { attachJobMetadata }    from "../queue/job-metadata.js";
+import {
+  retrievalRequestsTotal,
+  retrievalResultsCount,
+  retrievalDurationSeconds
+} from "../lib/metrics.js";
 
 // ─── Session state inference ──────────────────────────────────────────────────
 
@@ -93,10 +98,21 @@ async function retrieveWorkingSet({ sessionId, userId, message, seedMemories = [
   const cachedRetrieval = await redisRuntimeStore.getCachedRetrieval({ sessionId, message });
 
   if (!smallTalk && cachedRetrieval?.activeMemories) {
+    const retrievalStart = process.hrtime.bigint();
     const activeMemories = deduplicateAndRerank(
       [...relevantSeedMemories, ...cachedRetrieval.activeMemories],
       { querySessionId: sessionId }
     );
+    const retrievalDurationSec = Number(process.hrtime.bigint() - retrievalStart) / 1e9;
+
+    try {
+      retrievalRequestsTotal.inc({ cache_hit: "true" });
+      retrievalResultsCount.observe({ cache_hit: "true" }, activeMemories.length);
+      retrievalDurationSeconds.observe({ cache_hit: "true" }, retrievalDurationSec);
+    } catch {
+      // Instrumentation must never break retrieval
+    }
+
     await redisRuntimeStore.markMemoryHits(activeMemories);
     await workingMemoryStore.write(sessionId, {
       activeMemories,
@@ -107,6 +123,8 @@ async function retrieveWorkingSet({ sessionId, userId, message, seedMemories = [
   }
 
   // ── Full retrieval ───────────────────────────────────────────────────────
+  const retrievalStart = process.hrtime.bigint();
+
   const queryEmbedding = await openAIAdapter.embedText(message);
 
   const [recentFacts, similarMemories, rawRecentContext] = await Promise.all([
@@ -141,6 +159,16 @@ async function retrieveWorkingSet({ sessionId, userId, message, seedMemories = [
 
   const finalActiveMemories = smallTalk ? [] : workingSet;
   const finalRecentContext  = smallTalk ? [] : recentContext;
+
+  const retrievalDurationSec = Number(process.hrtime.bigint() - retrievalStart) / 1e9;
+
+  try {
+    retrievalRequestsTotal.inc({ cache_hit: "false" });
+    retrievalResultsCount.observe({ cache_hit: "false" }, finalActiveMemories.length);
+    retrievalDurationSeconds.observe({ cache_hit: "false" }, retrievalDurationSec);
+  } catch {
+    // Instrumentation must never break retrieval
+  }
 
   await redisRuntimeStore.setCachedRetrieval({
     sessionId,

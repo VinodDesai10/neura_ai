@@ -1,29 +1,40 @@
 /**
  * queue/metrics.js
  *
- * Lightweight counter-based metrics for the memory queue.
+ * Metrics façade for the memory queue.
  *
- * Metrics are emitted as structured log lines and tracked in an in-process
- * counter store.  This gives:
- *   1. Immediate observability via log aggregators (Datadog, CloudWatch, Loki).
- *   2. A queryable counter surface for tests and admin utilities.
+ * Dual-track instrumentation:
+ *   1. Structured log lines (Datadog, CloudWatch, Loki) — unchanged behaviour.
+ *   2. Prometheus counters + histogram via the shared registry in lib/metrics.js.
  *
- * Counters:
+ * Counters (in-process + Prometheus):
  *   jobs_processed_total         – successfully completed jobs
  *   jobs_failed_total            – jobs that errored on any attempt
  *   jobs_retried_total           – retry-scheduled events
  *   jobs_dead_lettered_total     – jobs moved to DLQ after exhausting attempts
  *   jobs_duplicate_skipped_total – jobs skipped due to idempotency hit
  *
- * All counters reset when the process restarts (in-memory only).
- * For persistent metrics, hook the emitted log lines in your aggregator.
+ * Histogram (Prometheus only):
+ *   queue_processing_duration_seconds – end-to-end job duration
+ *
+ * In-process counters reset on restart; Prometheus counters also reset but
+ * are scraped frequently enough that a counter-reset is visible in PromQL via
+ * `increase()`.
  */
 
 import { logger } from "../lib/logger.js";
+import {
+  jobsProcessedTotal,
+  jobsFailedTotal,
+  jobsRetriedTotal,
+  jobsDeadLetteredTotal,
+  jobsDuplicateSkippedTotal,
+  jobProcessingDuration
+} from "../lib/metrics.js";
 
 const metricsLog = logger.child({ component: "queue-metrics" });
 
-// ── In-process counters ────────────────────────────────────────────────────────
+// ── In-process counters (kept for snapshot() / tests) ─────────────────────────
 
 const counters = {
   jobs_processed_total:         0,
@@ -52,6 +63,14 @@ export const metrics = {
    */
   jobProcessed(labels) {
     inc("jobs_processed_total", labels);
+    const jobType = labels.jobType ?? "unknown";
+    jobsProcessedTotal.inc({ job_type: jobType });
+    if (typeof labels.durationMs === "number") {
+      jobProcessingDuration.observe(
+        { job_type: jobType, outcome: "completed" },
+        labels.durationMs / 1000
+      );
+    }
   },
 
   /**
@@ -60,6 +79,10 @@ export const metrics = {
    */
   jobFailed(labels) {
     inc("jobs_failed_total", labels);
+    jobsFailedTotal.inc({
+      job_type:       labels.jobType       ?? "unknown",
+      error_category: labels.errorCategory ?? "unknown"
+    });
   },
 
   /**
@@ -68,6 +91,7 @@ export const metrics = {
    */
   jobRetried(labels) {
     inc("jobs_retried_total", labels);
+    jobsRetriedTotal.inc({ job_type: labels.jobType ?? "unknown" });
   },
 
   /**
@@ -76,6 +100,13 @@ export const metrics = {
    */
   jobDeadLettered(labels) {
     inc("jobs_dead_lettered_total", labels);
+    jobsDeadLetteredTotal.inc({ job_type: labels.jobType ?? "unknown" });
+    if (typeof labels.durationMs === "number") {
+      jobProcessingDuration.observe(
+        { job_type: labels.jobType ?? "unknown", outcome: "dead_lettered" },
+        labels.durationMs / 1000
+      );
+    }
   },
 
   /**
@@ -84,17 +115,24 @@ export const metrics = {
    */
   jobDuplicateSkipped(labels) {
     inc("jobs_duplicate_skipped_total", labels);
+    jobsDuplicateSkippedTotal.inc({ job_type: labels.jobType ?? "unknown" });
+    if (typeof labels.durationMs === "number") {
+      jobProcessingDuration.observe(
+        { job_type: labels.jobType ?? "unknown", outcome: "skipped_duplicate" },
+        labels.durationMs / 1000
+      );
+    }
   },
 
   /**
-   * Snapshot all current counter values.
+   * Snapshot all current in-process counter values.
    * @returns {object}
    */
   snapshot() {
     return { ...counters };
   },
 
-  /** Reset all counters (test helper only). */
+  /** Reset all in-process counters (test helper only). */
   _reset() {
     for (const key of Object.keys(counters)) {
       counters[key] = 0;

@@ -303,3 +303,343 @@ Returns one of:
 ## Environment Variables Reference
 
 See `.env.example` for the full list with defaults. All cloud DB variables are optional — omitting them activates the in-memory fallback.
+
+---
+
+## Metrics and Observability
+
+AiNeura exposes a Prometheus-compatible scrape endpoint and emits process, HTTP, queue, retrieval, and dependency metrics out of the box.
+
+### Scrape Endpoint
+
+```
+GET /metrics
+Content-Type: text/plain; version=0.0.4
+```
+
+**Optional authentication** — set `METRICS_TOKEN` in your environment to require a Bearer token:
+
+```env
+METRICS_TOKEN=my-secret-scrape-token
+```
+
+Scrapers must then send `Authorization: Bearer my-secret-scrape-token`. Omit the variable entirely to allow unauthenticated scraping (suitable for private networks or Kubernetes with network policies).
+
+### Prometheus Scrape Config
+
+Add this job to your `prometheus.yml`:
+
+```yaml
+scrape_configs:
+  - job_name: neura_api
+    scrape_interval: 15s
+    scrape_timeout:  10s
+    static_configs:
+      - targets: ["localhost:4000"]
+    # Remove the authorization block if METRICS_TOKEN is not set
+    authorization:
+      type: Bearer
+      credentials: my-secret-scrape-token
+
+  # Scrape the memory worker on its own port if you run it separately
+  # (worker shares the same registry if in the same process; add a separate
+  #  port/endpoint if you run it as a standalone process)
+```
+
+For Kubernetes, use a `ServiceMonitor` (Prometheus Operator):
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: neura-api
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: neura-api
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+      authorization:
+        type: Bearer
+        credentials:
+          name: neura-metrics-token
+          key: token
+```
+
+### Available Metrics
+
+| Metric | Type | Labels | Description |
+|--------|------|--------|-------------|
+| `neura_http_requests_total` | Counter | method, route, status_code | Total HTTP requests |
+| `neura_http_request_duration_seconds` | Histogram | method, route, status_code | Request latency |
+| `neura_jobs_processed_total` | Counter | job_type | Successfully completed memory jobs |
+| `neura_jobs_failed_total` | Counter | job_type, error_category | Failed job attempts |
+| `neura_jobs_retried_total` | Counter | job_type | Jobs scheduled for retry |
+| `neura_jobs_dead_lettered_total` | Counter | job_type | Jobs moved to DLQ |
+| `neura_jobs_duplicate_skipped_total` | Counter | job_type | Jobs skipped (idempotency hit) |
+| `neura_queue_processing_duration_seconds` | Histogram | job_type, outcome | End-to-end job duration |
+| `neura_retrieval_requests_total` | Counter | cache_hit | Retrieval pipeline invocations |
+| `neura_retrieval_results_count` | Histogram | cache_hit | Memories returned per retrieval |
+| `neura_retrieval_duration_seconds` | Histogram | cache_hit | Full retrieval wall time |
+| `neura_reranker_requests_total` | Counter | — | `deduplicateAndRerank()` calls |
+| `neura_reranker_duration_seconds` | Histogram | — | Reranker wall time |
+| `neura_redis_up` | Gauge | — | Redis reachability (1=up, 0=down, -1=skipped) |
+| `neura_qdrant_up` | Gauge | — | Qdrant reachability |
+| `neura_postgres_up` | Gauge | — | PostgreSQL reachability |
+| `neura_neo4j_up` | Gauge | — | Neo4j reachability |
+| `neura_process_*` | Various | — | CPU, memory, event-loop, GC (default Node.js metrics) |
+
+Dependency gauges are refreshed every time `/readyz` is polled. Configure your readiness probe to run every 30–60 s for fresh gauge values.
+
+### Sample `/metrics` Output
+
+```
+# HELP neura_http_requests_total Total number of HTTP requests handled
+# TYPE neura_http_requests_total counter
+neura_http_requests_total{method="GET",route="/api/chat",status_code="200"} 142
+neura_http_requests_total{method="GET",route="/healthz",status_code="200"} 58
+neura_http_requests_total{method="POST",route="/api/chat",status_code="200"} 37
+
+# HELP neura_http_request_duration_seconds HTTP request duration in seconds
+# TYPE neura_http_request_duration_seconds histogram
+neura_http_request_duration_seconds_bucket{le="0.1",method="POST",route="/api/chat",status_code="200"} 3
+neura_http_request_duration_seconds_bucket{le="0.5",method="POST",route="/api/chat",status_code="200"} 18
+neura_http_request_duration_seconds_bucket{le="1",method="POST",route="/api/chat",status_code="200"} 29
+neura_http_request_duration_seconds_bucket{le="2.5",method="POST",route="/api/chat",status_code="200"} 37
+neura_http_request_duration_seconds_sum{method="POST",route="/api/chat",status_code="200"} 42.817
+neura_http_request_duration_seconds_count{method="POST",route="/api/chat",status_code="200"} 37
+
+# HELP neura_jobs_processed_total Memory jobs completed successfully
+# TYPE neura_jobs_processed_total counter
+neura_jobs_processed_total{job_type="process-event-into-memories"} 74
+neura_jobs_processed_total{job_type="summarise-session"} 3
+
+# HELP neura_jobs_failed_total Memory job attempt failures (includes retriable failures)
+# TYPE neura_jobs_failed_total counter
+neura_jobs_failed_total{job_type="process-event-into-memories",error_category="transient"} 2
+
+# HELP neura_jobs_dead_lettered_total Memory jobs moved to the dead-letter queue after exhausting retries
+# TYPE neura_jobs_dead_lettered_total counter
+neura_jobs_dead_lettered_total{job_type="process-event-into-memories"} 0
+
+# HELP neura_jobs_duplicate_skipped_total Memory jobs skipped due to idempotency (already processed)
+# TYPE neura_jobs_duplicate_skipped_total counter
+neura_jobs_duplicate_skipped_total{job_type="process-event-into-memories"} 1
+
+# HELP neura_queue_processing_duration_seconds End-to-end memory job processing duration in seconds
+# TYPE neura_queue_processing_duration_seconds histogram
+neura_queue_processing_duration_seconds_bucket{le="0.5",job_type="process-event-into-memories",outcome="completed"} 12
+neura_queue_processing_duration_seconds_bucket{le="1",job_type="process-event-into-memories",outcome="completed"} 58
+neura_queue_processing_duration_seconds_sum{job_type="process-event-into-memories",outcome="completed"} 61.4
+neura_queue_processing_duration_seconds_count{job_type="process-event-into-memories",outcome="completed"} 74
+
+# HELP neura_retrieval_requests_total Total hybrid retrieval pipeline invocations
+# TYPE neura_retrieval_requests_total counter
+neura_retrieval_requests_total{cache_hit="false"} 28
+neura_retrieval_requests_total{cache_hit="true"} 9
+
+# HELP neura_retrieval_duration_seconds Hybrid retrieval pipeline duration in seconds
+# TYPE neura_retrieval_duration_seconds histogram
+neura_retrieval_duration_seconds_bucket{le="0.1",cache_hit="false"} 4
+neura_retrieval_duration_seconds_bucket{le="0.25",cache_hit="false"} 19
+neura_retrieval_duration_seconds_bucket{le="0.5",cache_hit="false"} 28
+neura_retrieval_duration_seconds_sum{cache_hit="false"} 7.91
+neura_retrieval_duration_seconds_count{cache_hit="false"} 28
+
+# HELP neura_redis_up Redis reachability (1=up, 0=down, -1=skipped/not configured)
+# TYPE neura_redis_up gauge
+neura_redis_up 1
+
+# HELP neura_qdrant_up Qdrant reachability (1=up, 0=down, -1=skipped/not configured)
+# TYPE neura_qdrant_up gauge
+neura_qdrant_up 1
+
+# HELP neura_postgres_up PostgreSQL reachability (1=up, 0=down, -1=skipped/not configured)
+# TYPE neura_postgres_up gauge
+neura_postgres_up 1
+
+# HELP neura_neo4j_up Neo4j reachability (1=up, 0=down, -1=skipped/not configured)
+# TYPE neura_neo4j_up gauge
+neura_neo4j_up 1
+```
+
+### Grafana Dashboard
+
+Import the JSON below into Grafana (Dashboards → Import → Paste JSON) to get a starter dashboard. Requires Prometheus as a data source named `prometheus`.
+
+```json
+{
+  "title": "AiNeura API",
+  "uid": "neura-api-overview",
+  "schemaVersion": 38,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request Rate",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [{
+        "expr": "sum(rate(neura_http_requests_total[1m])) by (route, status_code)",
+        "legendFormat": "{{route}} {{status_code}}"
+      }]
+    },
+    {
+      "id": 2,
+      "title": "p50 / p95 / p99 Latency (ms)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(neura_http_request_duration_seconds_bucket{route=\"/api/chat\"}[5m])) by (le)) * 1000",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(neura_http_request_duration_seconds_bucket{route=\"/api/chat\"}[5m])) by (le)) * 1000",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(neura_http_request_duration_seconds_bucket{route=\"/api/chat\"}[5m])) by (le)) * 1000",
+          "legendFormat": "p99"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Error Rate (5xx)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "targets": [{
+        "expr": "sum(rate(neura_http_requests_total{status_code=~\"5..\"}[1m]))",
+        "legendFormat": "5xx / s"
+      }]
+    },
+    {
+      "id": 4,
+      "title": "Queue Job Throughput",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(neura_jobs_processed_total[1m])) by (job_type)",
+          "legendFormat": "processed – {{job_type}}"
+        },
+        {
+          "expr": "sum(rate(neura_jobs_failed_total[1m])) by (job_type)",
+          "legendFormat": "failed – {{job_type}}"
+        },
+        {
+          "expr": "sum(rate(neura_jobs_retried_total[1m])) by (job_type)",
+          "legendFormat": "retried – {{job_type}}"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Dead-Lettered Jobs (total)",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 16, "w": 6, "h": 4 },
+      "targets": [{
+        "expr": "sum(neura_jobs_dead_lettered_total)",
+        "legendFormat": "DLQ"
+      }],
+      "options": { "colorMode": "background", "thresholds": { "steps": [
+        { "value": 0, "color": "green" },
+        { "value": 1, "color": "red" }
+      ]}}
+    },
+    {
+      "id": 6,
+      "title": "Duplicate Jobs Skipped (total)",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 16, "w": 6, "h": 4 },
+      "targets": [{
+        "expr": "sum(neura_jobs_duplicate_skipped_total)",
+        "legendFormat": "skipped"
+      }]
+    },
+    {
+      "id": 7,
+      "title": "Retrieval Duration p95 (ms)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(neura_retrieval_duration_seconds_bucket{cache_hit=\"false\"}[5m])) by (le)) * 1000",
+          "legendFormat": "p95 full retrieval"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(neura_retrieval_duration_seconds_bucket{cache_hit=\"true\"}[5m])) by (le)) * 1000",
+          "legendFormat": "p95 cache hit"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Retrieval Cache Hit Rate",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+      "targets": [{
+        "expr": "sum(rate(neura_retrieval_requests_total{cache_hit=\"true\"}[5m])) / sum(rate(neura_retrieval_requests_total[5m]))",
+        "legendFormat": "cache hit rate"
+      }]
+    },
+    {
+      "id": 9,
+      "title": "Dependency Health",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 24, "w": 12, "h": 4 },
+      "targets": [
+        { "expr": "neura_redis_up",    "legendFormat": "Redis" },
+        { "expr": "neura_qdrant_up",   "legendFormat": "Qdrant" },
+        { "expr": "neura_postgres_up", "legendFormat": "Postgres" },
+        { "expr": "neura_neo4j_up",    "legendFormat": "Neo4j" }
+      ],
+      "options": { "colorMode": "background", "thresholds": { "steps": [
+        { "value": -1, "color": "blue" },
+        { "value": 0,  "color": "red" },
+        { "value": 1,  "color": "green" }
+      ]}}
+    },
+    {
+      "id": 10,
+      "title": "Process Memory (MB)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 32, "w": 12, "h": 8 },
+      "targets": [{
+        "expr": "neura_process_process_resident_memory_bytes / 1024 / 1024",
+        "legendFormat": "RSS MB"
+      }]
+    },
+    {
+      "id": 11,
+      "title": "Event Loop Lag p99 (ms)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 32, "w": 12, "h": 8 },
+      "targets": [{
+        "expr": "neura_process_nodejs_eventloop_lag_p99_seconds * 1000",
+        "legendFormat": "event loop lag p99"
+      }]
+    }
+  ]
+}
+```
+
+**Dashboard panels at a glance:**
+
+| Panel | What it shows |
+|-------|---------------|
+| Request Rate | Requests/s broken down by route and status code |
+| p50/p95/p99 Latency | `/api/chat` response time percentiles |
+| Error Rate (5xx) | Server error rate per second |
+| Queue Job Throughput | Processed / failed / retried jobs per second |
+| Dead-Lettered Jobs | Cumulative DLQ count (red when > 0) |
+| Duplicate Jobs Skipped | Idempotency hit rate |
+| Retrieval Duration p95 | Full vs cache-hit retrieval latency |
+| Retrieval Cache Hit Rate | Fraction of retrieval calls served from cache |
+| Dependency Health | Live up/down/skipped status for all four stores |
+| Process Memory | RSS in MB over time |
+| Event Loop Lag p99 | Node.js event loop health |

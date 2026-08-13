@@ -21,6 +21,7 @@ import {
   handleLivenessAlias,
   handleReadiness
 } from "../controllers/health.controller.js";
+import { handleMetrics } from "../controllers/metrics.controller.js";
 
 /**
  * @param {string} method
@@ -56,6 +57,11 @@ export function healthRoutes(method, pathname, req, res) {
     // ── Container-platform readiness probe ──────────────────────────────────
     case "/readyz":
       handleReadiness(req, res);
+      return true;
+
+    // ── Prometheus scrape endpoint ───────────────────────────────────────────
+    case "/metrics":
+      handleMetrics(req, res);
       return true;
 
     default:

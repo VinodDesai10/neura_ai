@@ -40,6 +40,13 @@ import { getQdrantHealth }   from "../infrastructure/qdrant-client.js";
 import { getPostgresHealth } from "../infrastructure/postgres-client.js";
 import { getNeo4jHealth }    from "../infrastructure/relationship-graph-store.js";
 import { logger }            from "../lib/logger.js";
+import {
+  redisUp,
+  qdrantUp,
+  postgresUp,
+  neo4jUp,
+  statusToGauge
+} from "../lib/metrics.js";
 
 const readinessLog = logger.child({ component: "readiness-service" });
 
@@ -174,6 +181,16 @@ export async function checkReadiness() {
   const queue = deriveQueueCheck(redis);
 
   const checks = { redis, qdrant, postgres, neo4j, queue };
+
+  // ── Update Prometheus dependency gauges ──────────────────────────────────
+  try {
+    redisUp.set(statusToGauge(redis.status));
+    qdrantUp.set(statusToGauge(qdrant.status));
+    postgresUp.set(statusToGauge(postgres.status));
+    neo4jUp.set(statusToGauge(neo4j.status));
+  } catch {
+    // Gauge updates must never break the readiness probe
+  }
 
   // Determine overall status: any "down" result → overall down.
   const statuses = Object.values(checks).map((c) => c.status);
