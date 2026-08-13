@@ -180,6 +180,17 @@ export const rerankerDurationSeconds = new Histogram({
   registers:  [registry]
 });
 
+/**
+ * Incremented each time a topical relevance penalty multiplier < 1 is applied
+ * inside applyTopicalRelevancePenalty().  Use this to monitor how aggressively
+ * the penalty is firing in production and to tune threshold / factor values.
+ */
+export const topicalPenaltyAppliedTotal = new Counter({
+  name:    "neura_retrieval_topical_penalty_applied_total",
+  help:    "Total number of times a topical relevance penalty multiplier < 1 was applied",
+  registers:  [registry]
+});
+
 // ── Dependency health gauges ──────────────────────────────────────────────────
 // Set to 1 when the dependency is up, 0 when down, -1 when skipped/unconfigured.
 

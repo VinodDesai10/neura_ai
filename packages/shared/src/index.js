@@ -405,13 +405,13 @@ export const RETRIEVAL_DEFAULTS = {
     /** Feature flag — disabled by default; set RETRIEVAL_TOPICAL_PENALTY_ENABLED=true to enable. */
     enabled:       false,
     /** Max(vectorScore, normLexicalScore) below this → apply lowPenalty. */
-    lowThreshold:  0.15,
+    lowThreshold:  0.10,
     /** Max(vectorScore, normLexicalScore) below this (but ≥ lowThreshold) → apply mediumPenalty. */
-    highThreshold: 0.30,
-    /** Multiplier applied when relevance < lowThreshold  (e.g. 0.1 = 90% penalty). */
-    lowPenalty:    0.10,
-    /** Multiplier applied when relevance < highThreshold (e.g. 0.5 = 50% penalty). */
-    mediumPenalty: 0.50
+    highThreshold: 0.25,
+    /** Multiplier applied when relevance < lowThreshold  (e.g. 0.30 = 70% penalty). */
+    lowPenalty:    0.30,
+    /** Multiplier applied when relevance < highThreshold (e.g. 0.60 = 40% penalty). */
+    mediumPenalty: 0.60
   }
 };
 

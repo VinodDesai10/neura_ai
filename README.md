@@ -283,6 +283,13 @@ RETRIEVAL_RECENCY_WEIGHT=0.1         # weight for recency decay factor
 RETRIEVAL_RECENCY_HALF_LIFE_HOURS=72 # score halves every N hours
 RETRIEVAL_DEDUP_THRESHOLD=0.92       # cosine similarity threshold for dedup
 MEMORY_SUMMARY_EVERY_N_TURNS=20      # summarise session every N assistant turns
+
+# Topical relevance penalty (off by default — set ENABLED=true to activate)
+RETRIEVAL_TOPICAL_PENALTY_ENABLED=false
+RETRIEVAL_TOPICAL_PENALTY_LOW_THRESHOLD=0.10   # relevance below this → heavy penalty
+RETRIEVAL_TOPICAL_PENALTY_HIGH_THRESHOLD=0.25  # relevance below this → medium penalty
+RETRIEVAL_TOPICAL_PENALTY_LOW_FACTOR=0.30      # multiplier for very low relevance (70% penalty)
+RETRIEVAL_TOPICAL_PENALTY_MEDIUM_FACTOR=0.60   # multiplier for moderately low relevance (40% penalty)
 ```
 
 ---
@@ -387,6 +394,7 @@ spec:
 | `neura_retrieval_duration_seconds` | Histogram | cache_hit | Full retrieval wall time |
 | `neura_reranker_requests_total` | Counter | — | `deduplicateAndRerank()` calls |
 | `neura_reranker_duration_seconds` | Histogram | — | Reranker wall time |
+| `neura_retrieval_topical_penalty_applied_total` | Counter | — | Times a topical relevance penalty multiplier < 1 was applied |
 | `neura_redis_up` | Gauge | — | Redis reachability (1=up, 0=down, -1=skipped) |
 | `neura_qdrant_up` | Gauge | — | Qdrant reachability |
 | `neura_postgres_up` | Gauge | — | PostgreSQL reachability |

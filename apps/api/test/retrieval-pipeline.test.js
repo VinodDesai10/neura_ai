@@ -1018,3 +1018,112 @@ test("K4 – backward compat: RETRIEVAL_TOPICAL_PENALTY_ENABLED absent → penal
     "K4 – topicalPenalty.enabled must default to false"
   );
 });
+
+// ─── K5: Sparse semantic match regression — new production defaults ───────────
+
+test("K5 – sparse semantic match stays above unrelated high-importance memory with new production defaults", () => {
+  /**
+   * Regression guard for the updated production defaults:
+   *   lowThreshold  = 0.10   (was 0.15)
+   *   highThreshold = 0.25   (was 0.30)
+   *   lowPenalty    = 0.30   (was 0.10)
+   *   mediumPenalty = 0.60   (was 0.50)
+   *
+   * Scenario:
+   *   "sparse-semantic" memory (e.g. a travel concept retrieved mostly by
+   *   vector similarity but with weak keyword overlap):
+   *     vectorScore ≈ 0.18, keywordScore = 0
+   *     → relevance = 0.18, which is ≥ lowThreshold(0.10) and < highThreshold(0.25)
+   *     → medium penalty applied: score × 0.60
+   *
+   *   "unrelated high-importance" memory:
+   *     vectorScore = 0.05, keywordScore = 0, importance = 0.90
+   *     → relevance = 0.05, which is < lowThreshold(0.10)
+   *     → low penalty applied: score × 0.30
+   *
+   * Because the off-topic memory's importance advantage is 0.90 vs 0.55 but
+   * its raw score is crushed harder (×0.30 vs ×0.60), the sparse semantic
+   * match must still win.
+   *
+   * Raw scores (default weights, null timestamp → recency=1.0, same session):
+   *   sparse semantic:  0.18*0.5 + 0*0.2 + 0.55*0.2 + 1.0*0.1 + 0.04
+   *                   = 0.09 + 0 + 0.11 + 0.1 + 0.04 = 0.340
+   *     after ×0.60  → 0.204
+   *
+   *   off-topic high-imp: 0.05*0.5 + 0*0.2 + 0.90*0.2 + 1.0*0.1 + 0.04
+   *                     = 0.025 + 0 + 0.18 + 0.1 + 0.04 = 0.345
+   *     after ×0.30  → 0.1035
+   *
+   * 0.204 > 0.1035 → sparse semantic wins. Test guards this permanently.
+   */
+  const productionDefaults = cfg({
+    vectorWeight:     0.5,
+    lexicalWeight:    0.2,
+    importanceWeight: 0.2,
+    recencyWeight:    0.1,
+    topicalPenalty: {
+      enabled:       true,
+      lowThreshold:  0.10,
+      highThreshold: 0.25,
+      lowPenalty:    0.30,
+      mediumPenalty: 0.60
+    }
+  });
+
+  const sparseSemantic = {
+    id:          "mem-sparse-semantic",
+    sessionId:   SESSION_A,
+    content:     "Long-haul international travel requires careful jet lag management.",
+    memoryType:  "semantic",
+    fingerprint: "fp-sparse-semantic",
+    metadata:    { importance: 0.55 }
+  };
+
+  const unrelatedHighImportance = {
+    id:          "mem-unrelated-high-imp",
+    sessionId:   SESSION_A,
+    content:     "I am a senior software engineer focused on distributed systems.",
+    memoryType:  "factual",
+    fingerprint: "fp-unrelated-high-imp",
+    metadata:    { importance: 0.90 }
+  };
+
+  const scoredEntries = [
+    { memory: sparseSemantic,        vectorScore: 0.18, lexicalScore: 0 },
+    { memory: unrelatedHighImportance, vectorScore: 0.05, lexicalScore: 0 }
+  ];
+
+  const results = deduplicateAndRerank(
+    [sparseSemantic, unrelatedHighImportance],
+    { querySessionId: SESSION_A, scoredEntries },
+    productionDefaults
+  );
+
+  expectNoDuplicates(results, "K5");
+  expectScoresDescending(results, "K5");
+
+  // The sparse semantic match must outrank the unrelated high-importance memory
+  const resultIds       = results.map((r) => r.id);
+  const sparseSemPos    = resultIds.indexOf("mem-sparse-semantic");
+  const unrelatedPos    = resultIds.indexOf("mem-unrelated-high-imp");
+
+  assert.ok(
+    sparseSemPos < unrelatedPos,
+    `K5 – sparse semantic match (pos=${sparseSemPos}) must rank above unrelated high-importance memory (pos=${unrelatedPos}).\n` +
+    `  sparse score=${results[sparseSemPos]?._retrieval?.score?.toFixed(4)}, ` +
+    `  unrelated score=${results[unrelatedPos]?._retrieval?.score?.toFixed(4)}\n` +
+    `  Order: ${JSON.stringify(resultIds)}`
+  );
+
+  // Also verify penalty was actually applied to both memories
+  assert.equal(
+    results[sparseSemPos]._retrieval.topicalPenaltyApplied,
+    true,
+    "K5 – sparse semantic memory must have had topical penalty applied (medium bracket)"
+  );
+  assert.equal(
+    results[unrelatedPos]._retrieval.topicalPenaltyApplied,
+    true,
+    "K5 – unrelated high-importance memory must have had topical penalty applied (low bracket)"
+  );
+});

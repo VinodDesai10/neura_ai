@@ -19,8 +19,10 @@
 import { readRetrievalConfig } from "@neura/shared";
 import {
   rerankerRequestsTotal,
-  rerankerDurationSeconds
+  rerankerDurationSeconds,
+  topicalPenaltyAppliedTotal
 } from "../lib/metrics.js";
+import { logger } from "../lib/logger.js";
 
 // ─── Recency decay ─────────────────────────────────────────────────────────────
 
@@ -67,6 +69,7 @@ export function applyRecencyDecay(timestamp, halfLifeHours) {
  * RETRIEVAL_TOPICAL_PENALTY_ENABLED=true.
  *
  * @param {{
+ *   memoryId:     string,  – memory id, used for debug logging
  *   vectorScore:  number,  – normalised vector score (0-1)
  *   keywordScore: number,  – normalised lexical score (0-1)
  *   finalScore:   number,  – weighted hybrid score before penalty
@@ -74,7 +77,7 @@ export function applyRecencyDecay(timestamp, halfLifeHours) {
  * }} params
  * @returns {number}  penalised (or unchanged) score
  */
-export function applyTopicalRelevancePenalty({ vectorScore, keywordScore, finalScore, config }) {
+export function applyTopicalRelevancePenalty({ memoryId, vectorScore, keywordScore, finalScore, config }) {
   const penalty = config?.topicalPenalty;
 
   // Feature flag off, or no penalty config → pass through unchanged
@@ -86,13 +89,35 @@ export function applyTopicalRelevancePenalty({ vectorScore, keywordScore, finalS
   let multiplier = 1;
 
   if (relevance < penalty.lowThreshold) {
-    // Very low relevance — heavy penalty (e.g. 0.10 × score)
+    // Very low relevance — heavy penalty
     multiplier = penalty.lowPenalty;
   } else if (relevance < penalty.highThreshold) {
-    // Moderate relevance — medium penalty (e.g. 0.50 × score)
+    // Moderate relevance — medium penalty
     multiplier = penalty.mediumPenalty;
   }
   // relevance >= highThreshold → no penalty (multiplier stays 1)
+
+  if (multiplier < 1) {
+    // Increment Prometheus counter — allows operators to track penalty fire rate
+    try {
+      topicalPenaltyAppliedTotal.inc();
+    } catch {
+      // Instrumentation must never break retrieval
+    }
+
+    // Debug log — only emitted at "debug" level so it is a no-op in production
+    // unless LOG_LEVEL=debug is explicitly set
+    logger.debug(
+      {
+        memoryId:    memoryId ?? "unknown",
+        relevance:   +relevance.toFixed(4),
+        multiplier:  +multiplier.toFixed(4),
+        vectorScore: +( vectorScore || 0).toFixed(4),
+        keywordScore:+(keywordScore || 0).toFixed(4)
+      },
+      "topical-penalty applied"
+    );
+  }
 
   return finalScore * multiplier;
 }
@@ -103,6 +128,7 @@ export function applyTopicalRelevancePenalty({ vectorScore, keywordScore, finalS
  * Compute a weighted hybrid retrieval score for a single memory.
  *
  * @param {{
+ *   memoryId?:      string,   – optional id forwarded to penalty logging
  *   vectorScore:    number,   – Qdrant cosine similarity (0–1) or -1 when unavailable
  *   lexicalScore:   number,   – token-overlap count (raw, unbounded)
  *   importanceScore:number,   – stored metadata.importance (0–1)
@@ -122,7 +148,7 @@ export function applyTopicalRelevancePenalty({ vectorScore, keywordScore, finalS
  * }}
  */
 export function computeHybridScore(
-  { vectorScore, lexicalScore, importanceScore, timestamp, sessionId, querySessionId },
+  { memoryId, vectorScore, lexicalScore, importanceScore, timestamp, sessionId, querySessionId },
   cfg
 ) {
   const config = cfg ?? readRetrievalConfig();
@@ -149,6 +175,7 @@ export function computeHybridScore(
   // Apply topical relevance penalty when enabled via feature flag
   const penaltyEnabled  = config?.topicalPenalty?.enabled ?? false;
   const penalisedScore  = applyTopicalRelevancePenalty({
+    memoryId,
     vectorScore:  normVector,
     keywordScore: normLexical,
     finalScore:   rawScore,
@@ -222,6 +249,7 @@ export function deduplicateAndRerank(memories, context, cfg) {
 
     const breakdown = computeHybridScore(
       {
+        memoryId:       memory.id,
         vectorScore,
         lexicalScore,
         importanceScore,
