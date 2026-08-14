@@ -49,7 +49,13 @@ export {
   scoreMemoryImportance,
   shouldStoreMemory,
   extractMemoryCandidates,
-  computeMemoryFingerprint
+  computeMemoryFingerprint,
+  calculateImportance,
+  normalizeText,
+  similarity,
+  isDuplicate,
+  mergeMemory,
+  DEFAULT_DEDUP_THRESHOLD
 } from "./memory/index.js";
 
 // ─── Retrieval module ─────────────────────────────────────────────────────────
