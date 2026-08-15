@@ -120,3 +120,35 @@ export {
   VectorMemoryRepository,
   RelationshipGraphRepository
 } from "./repositories/index.js";
+
+// ─── Tiered repositories ──────────────────────────────────────────────────────
+
+export { hotRepository }  from "./repositories/hotRepository.js";
+export { warmRepository } from "./repositories/warmRepository.js";
+export { coldRepository } from "./repositories/coldRepository.js";
+
+// ─── Tier management ──────────────────────────────────────────────────────────
+
+export {
+  Tier,
+  determineTier,
+  promote,
+  demote,
+  rebalance,
+  getRepositoryForTier,
+  HOT_WINDOW_MS,
+  COLD_AGE_MS,
+  WARM_IMPORTANCE_THRESHOLD,
+  COLD_IMPORTANCE_THRESHOLD
+} from "./services/tierManager.js";
+
+// ─── Storage router ───────────────────────────────────────────────────────────
+
+export {
+  storageRouter,
+  saveMemory,
+  getMemory,
+  searchUserMemories,
+  updateMemory,
+  removeMemory
+} from "./services/storageRouter.js";

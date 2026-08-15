@@ -55,7 +55,29 @@ export {
   similarity,
   isDuplicate,
   mergeMemory,
-  DEFAULT_DEDUP_THRESHOLD
+  DEFAULT_DEDUP_THRESHOLD,
+  // ─── Tiered repositories ──────────────────────────────────────────────────
+  hotRepository,
+  warmRepository,
+  coldRepository,
+  // ─── Tier management ──────────────────────────────────────────────────────
+  Tier,
+  determineTier,
+  promote,
+  demote,
+  rebalance,
+  getRepositoryForTier,
+  HOT_WINDOW_MS,
+  COLD_AGE_MS,
+  WARM_IMPORTANCE_THRESHOLD,
+  COLD_IMPORTANCE_THRESHOLD,
+  // ─── Storage router ───────────────────────────────────────────────────────
+  storageRouter,
+  saveMemory,
+  getMemory,
+  searchUserMemories,
+  updateMemory,
+  removeMemory
 } from "./memory/index.js";
 
 // ─── Retrieval module ─────────────────────────────────────────────────────────

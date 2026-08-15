@@ -12,11 +12,14 @@
  *   - Duplicate candidates are logged and skipped (no double-storage)
  *   - "summarise-session" job type handled: calls generateSummaryMemory,
  *     embeds the result, and stores it via vectorMemoryStore
+ *   - All new memories are additionally routed through storageRouter so they
+ *     are placed in the correct hot/warm/cold tier automatically.
  */
 
 import {
   computeMemoryFingerprint,
-  extractMemoryCandidates
+  extractMemoryCandidates,
+  storageRouter
 } from "@neura/core";
 import { factualMemoryStore }         from "../infrastructure/factual-memory-store.js";
 import { vectorMemoryStore }          from "../infrastructure/vector-memory-store.js";
@@ -102,6 +105,10 @@ async function processEventJob(event) {
       }
 
       const storedMemory = await factualMemoryStore.upsert(candidate);
+      // Route through the tier system — non-blocking; failure must not break storage
+      storageRouter.saveMemory(storedMemory).catch((err) =>
+        processorLog.warn({ err, id: storedMemory?.id }, "tier-router.save.failed")
+      );
       toLink.push(storedMemory);
       stored.push(storedMemory);
       continue;
@@ -136,6 +143,10 @@ async function processEventJob(event) {
     }
 
     const storedMemory = await vectorMemoryStore.upsert(candidate);
+    // Route through the tier system — non-blocking; failure must not break storage
+    storageRouter.saveMemory(storedMemory).catch((err) =>
+      processorLog.warn({ err, id: storedMemory?.id }, "tier-router.save.failed")
+    );
     toLink.push(storedMemory);
     stored.push(storedMemory);
   }
@@ -171,6 +182,10 @@ async function processSummariseJob(job) {
 
   const stored = await vectorMemoryStore.upsert(summaryMemory);
   if (stored) {
+    // Route through the tier system — non-blocking
+    storageRouter.saveMemory(stored).catch((err) =>
+      processorLog.warn({ err, id: stored?.id }, "tier-router.save.failed")
+    );
     await linkBatchMemoryRelationships([stored]);
     return [stored];
   }
