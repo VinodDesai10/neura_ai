@@ -123,9 +123,9 @@ export {
 
 // ─── Tiered repositories ──────────────────────────────────────────────────────
 
-export { hotRepository }  from "./repositories/hotRepository.js";
-export { warmRepository } from "./repositories/warmRepository.js";
-export { coldRepository } from "./repositories/coldRepository.js";
+export { hotRepository, createHotRepository }   from "./repositories/hotRepository.js";
+export { warmRepository, createWarmRepository } from "./repositories/warmRepository.js";
+export { coldRepository, createColdRepository } from "./repositories/coldRepository.js";
 
 // ─── Tier management ──────────────────────────────────────────────────────────
 

@@ -18,9 +18,11 @@
 
 import {
   computeMemoryFingerprint,
-  extractMemoryCandidates,
-  storageRouter
+  extractMemoryCandidates
 } from "@neura/core";
+// Use the API-layer storage router so memories are persisted via real Redis
+// and PostgreSQL adapters rather than the core-package in-memory singletons.
+import { storageRouter } from "../infrastructure/tier/index.js";
 import { factualMemoryStore }         from "../infrastructure/factual-memory-store.js";
 import { vectorMemoryStore }          from "../infrastructure/vector-memory-store.js";
 import { linkBatchMemoryRelationships } from "../infrastructure/relationship-graph-store.js";

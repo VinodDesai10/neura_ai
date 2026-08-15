@@ -1,98 +1,55 @@
 /**
  * packages/core/src/memory/repositories/warmRepository.js
  *
- * Warm-tier repository — holds important memories that are no longer
- * actively accessed but are too significant to archive.
+ * Warm-tier repository — holds important memories that have cooled off.
  *
- * Current backing store: in-memory Map.
+ * ─── Backing store ────────────────────────────────────────────────────────────
+ * The default export (`warmRepository`) uses an in-memory Map so the package
+ * works standalone without any external service.
  *
- * Future adapter target: PostgreSQL (or any relational DB).  The warm tier
- * maps naturally to a SQL table because warm memories tend to have higher
- * structured-query needs (filter by domain, importance range, etc.).
+ * For production use, inject a PostgreSQL-backed driver via `createWarmRepository`:
+ *
+ *   import { createWarmRepository } from "@neura/core";
+ *   import { postgresDriver } from "@neura/api/infrastructure/tier/warm-postgres-driver.js";
+ *   export const warmRepository = createWarmRepository(postgresDriver);
+ *
+ * ─── Driver contract ──────────────────────────────────────────────────────────
+ * Any object passed to `createWarmRepository` must implement:
+ *
+ *   save(memory)           → Promise<object>
+ *   get(id)                → Promise<object|undefined>
+ *   listByUser(userId)     → Promise<object[]>
+ *   update(id, patch)      → Promise<object|null>
+ *   remove(id)             → Promise<boolean>
  *
  * ─── Warm-tier criteria (evaluated by tierManager.determineTier) ─────────────
- *   • metadata.importance >= 0.7, AND
- *   • NOT already hot (lastAccessedAt within 7 days)
- *
- * ─── Adapter notes for PostgreSQL ────────────────────────────────────────────
- *   Table: memories_warm
- *   Columns:
- *     id            TEXT PRIMARY KEY
- *     user_id       TEXT
- *     memory_type   TEXT
- *     content       TEXT
- *     summary       TEXT
- *     metadata      JSONB
- *     created_at    TIMESTAMPTZ DEFAULT NOW()
- *     updated_at    TIMESTAMPTZ DEFAULT NOW()
- *
- *   Replace the Map operations below with parameterised pg queries.
- *   Keep method signatures identical.
+ *   • importance >= 0.7 AND not hot
+ *   • OR: any memory that doesn't qualify as hot or cold
  *
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-// ─── In-memory store ──────────────────────────────────────────────────────────
+// ─── In-memory driver (default) ───────────────────────────────────────────────
 
 /** @type {Map<string, object>} */
 const _store = new Map();
 
-// ─── Repository ───────────────────────────────────────────────────────────────
-
-/**
- * Warm-tier memory repository.
- *
- * Identical interface to hotRepository and coldRepository — all methods
- * are async so callers can swap backends without changing call sites.
- */
-export const warmRepository = {
-  /**
-   * Persist a memory in the warm tier.
-   *
-   * @param {object} memory - Memory with a mandatory `id` field.
-   * @returns {Promise<object>}
-   * @throws {Error} When `memory.id` is missing.
-   */
+const inMemoryDriver = {
   async save(memory) {
-    if (!memory?.id) throw new Error("warmRepository.save: memory.id is required");
     const record = { ...memory };
     _store.set(record.id, record);
     return record;
   },
-
-  /**
-   * Retrieve a single memory by its ID.
-   *
-   * @param {string} id
-   * @returns {Promise<object|undefined>}
-   */
   async get(id) {
     return _store.get(id);
   },
-
-  /**
-   * List all memories belonging to a specific user.
-   *
-   * @param {string} userId
-   * @returns {Promise<object[]>}
-   */
   async listByUser(userId) {
     const results = [];
     for (const memory of _store.values()) {
-      if (memory.userId === userId) {
-        results.push(memory);
-      }
+      if (memory.userId === userId) results.push(memory);
     }
     return results;
   },
-
-  /**
-   * Apply a partial update (patch) to an existing memory.
-   *
-   * @param {string} id
-   * @param {object} patch
-   * @returns {Promise<object|null>} Updated memory, or `null` if not found.
-   */
   async update(id, patch) {
     const existing = _store.get(id);
     if (!existing) return null;
@@ -100,26 +57,46 @@ export const warmRepository = {
     _store.set(id, updated);
     return updated;
   },
-
-  /**
-   * Remove a memory from the warm tier.
-   *
-   * @param {string} id
-   * @returns {Promise<boolean>}
-   */
   async remove(id) {
     return _store.delete(id);
   },
-
-  // ─── Test / introspection helpers ──────────────────────────────────────────
-
-  /** @internal */
-  size() {
-    return _store.size;
-  },
-
-  /** @internal */
-  clear() {
-    _store.clear();
-  }
+  _size()  { return _store.size; },
+  _clear() { _store.clear(); }
 };
+
+// ─── Factory ──────────────────────────────────────────────────────────────────
+
+/**
+ * Create a warm-tier repository backed by the provided driver.
+ *
+ * @param {object|null} driver
+ * @returns {{ save, get, listByUser, update, remove, size, clear }}
+ */
+export function createWarmRepository(driver = null) {
+  const d = driver || inMemoryDriver;
+
+  return {
+    async save(memory) {
+      if (!memory?.id) throw new Error("warmRepository.save: memory.id is required");
+      return d.save(memory);
+    },
+    async get(id) {
+      return d.get(id);
+    },
+    async listByUser(userId) {
+      return d.listByUser(userId);
+    },
+    async update(id, patch) {
+      return d.update(id, patch);
+    },
+    async remove(id) {
+      return d.remove(id);
+    },
+    size()  { return typeof d._size  === "function" ? d._size()  : undefined; },
+    clear() { if (typeof d._clear === "function") d._clear(); }
+  };
+}
+
+// ─── Default singleton (in-memory) ────────────────────────────────────────────
+
+export const warmRepository = createWarmRepository(null);

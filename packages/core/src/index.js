@@ -60,6 +60,9 @@ export {
   hotRepository,
   warmRepository,
   coldRepository,
+  createHotRepository,
+  createWarmRepository,
+  createColdRepository,
   // ─── Tier management ──────────────────────────────────────────────────────
   Tier,
   determineTier,
