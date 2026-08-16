@@ -382,6 +382,12 @@ export const RETRIEVAL_DEFAULTS = {
   importanceWeight: 0.2,
   /** Weight applied to the recency-decay factor. */
   recencyWeight: 0.1,
+  /**
+   * Weight applied to the Neo4j graph relationship score.
+   * Used by the hybrid retrieval service (hybridRetrievalService.js).
+   * The legacy retrieval pipeline does not use this weight.
+   */
+  graphWeight: 0.1,
   /** Hours for the recency half-life (score halves every N hours). */
   recencyHalfLifeHours: 72,
   /** Cosine similarity threshold above which two memories are near-duplicates. */
@@ -443,6 +449,7 @@ export function readRetrievalConfig() {
     recencyHalfLifeHours:  num("RETRIEVAL_RECENCY_HALF_LIFE_HOURS", RETRIEVAL_DEFAULTS.recencyHalfLifeHours),
     dedupThreshold:        num("RETRIEVAL_DEDUP_THRESHOLD",         RETRIEVAL_DEFAULTS.dedupThreshold),
     summaryEveryNTurns:    num("MEMORY_SUMMARY_EVERY_N_TURNS",      RETRIEVAL_DEFAULTS.summaryEveryNTurns),
+    graphWeight:           num("RETRIEVAL_GRAPH_WEIGHT",            RETRIEVAL_DEFAULTS.graphWeight),
     topicalPenalty: {
       enabled:       penaltyEnabled,
       lowThreshold:  num("RETRIEVAL_TOPICAL_PENALTY_LOW_THRESHOLD",  RETRIEVAL_DEFAULTS.topicalPenalty.lowThreshold),

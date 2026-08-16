@@ -80,7 +80,11 @@ export {
   getMemory,
   searchUserMemories,
   updateMemory,
-  removeMemory
+  removeMemory,
+  // ─── Hybrid retrieval ─────────────────────────────────────────────────────
+  createHybridRetrievalService,
+  hybridRetrievalService,
+  HYBRID_WEIGHTS_DEFAULTS
 } from "./memory/index.js";
 
 // ─── Retrieval module ─────────────────────────────────────────────────────────

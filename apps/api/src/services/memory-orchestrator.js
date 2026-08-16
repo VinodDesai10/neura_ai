@@ -29,6 +29,7 @@ import { workingMemoryStore }  from "../infrastructure/working-memory-store.js";
 import { redisRuntimeStore }   from "../infrastructure/redis-runtime-store.js";
 import { openAIAdapter }       from "./openai-adapter.js";
 import { deduplicateAndRerank } from "./retrieval-scorer.js";
+import { hybridRetrieval } from "./hybrid-retrieval.js";
 import { shouldSummarise }      from "./summary-memory.js";
 import { attachJobMetadata }    from "../queue/job-metadata.js";
 import {
@@ -127,21 +128,43 @@ async function retrieveWorkingSet({ sessionId, userId, message, seedMemories = [
 
   const queryEmbedding = await openAIAdapter.embedText(message);
 
-  const [recentFacts, similarMemories, rawRecentContext] = await Promise.all([
+  const [recentFacts, similarMemories, rawRecentContext, hybridMemories] = await Promise.all([
     factualMemoryStore.findRelevant(message, sessionId),
     vectorMemoryStore.findRelevant({ query: message, queryEmbedding, sessionId, userId }),
-    rawEventVault.findRecentBySession(sessionId)
+    rawEventVault.findRecentBySession(sessionId),
+    // Hybrid retrieval — adds graph-boosted candidates and access-frequency
+    // signals.  Failures are silenced internally; an empty array is returned
+    // when all backends are unavailable so the turn proceeds normally.
+    hybridRetrieval.getRelevantMemories(message, userId, sessionId).catch(() => [])
   ]);
 
   const recentContext    = recentTurns.length ? recentTurns : rawRecentContext;
   const previousMemories = previousWorkingMemory?.activeMemories || [];
 
   // Build scored-entries lookup from store-level results (they carry _retrieval)
+  // Hybrid memories may carry a _hybrid envelope — normalise them so they're
+  // compatible with the existing deduplicateAndRerank() pipeline.
+  const normaliseHybrid = (m) => {
+    if (!m._hybrid || m._retrieval) return m;
+    return {
+      ...m,
+      _retrieval: {
+        vectorScore:  m._hybrid.vectorScore  ?? 0,
+        lexicalScore: (m._hybrid.keywordScore ?? 0) * 5,  // undo normalisation
+        importanceScore: m._hybrid.importanceScore ?? 0,
+        recencyScore: m._hybrid.recencyScore  ?? 0,
+        score:        m._hybrid.finalScore    ?? 0,
+        source:       (m._hybrid.sources || ["hybrid"]).join("+")
+      }
+    };
+  };
+
   const allCandidates = [
     ...relevantSeedMemories,
     ...previousMemories,
     ...recentFacts,
-    ...similarMemories
+    ...similarMemories,
+    ...hybridMemories.map(normaliseHybrid)
   ];
 
   const scoredEntries = allCandidates

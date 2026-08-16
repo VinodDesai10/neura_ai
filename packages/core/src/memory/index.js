@@ -152,3 +152,11 @@ export {
   updateMemory,
   removeMemory
 } from "./services/storageRouter.js";
+
+// ─── Hybrid retrieval ─────────────────────────────────────────────────────────
+
+export {
+  createHybridRetrievalService,
+  hybridRetrievalService,
+  HYBRID_WEIGHTS_DEFAULTS
+} from "./services/hybridRetrievalService.js";
