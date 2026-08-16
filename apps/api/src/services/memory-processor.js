@@ -29,6 +29,7 @@ import { linkBatchMemoryRelationships } from "../infrastructure/relationship-gra
 import { openAIAdapter }              from "./openai-adapter.js";
 import { isSimilarMemory }            from "./deduplication-service.js";
 import { generateSummaryMemory }      from "./summary-memory.js";
+import { persistMemoryGraph }         from "./graphPipeline.js";
 import { logger }                     from "../lib/logger.js";
 
 const processorLog = logger.child({ component: "memory-processor" });
@@ -111,6 +112,8 @@ async function processEventJob(event) {
       storageRouter.saveMemory(storedMemory).catch((err) =>
         processorLog.warn({ err, id: storedMemory?.id }, "tier-router.save.failed")
       );
+      // Async graph extraction — must never block or fail memory storage
+      persistMemoryGraph(storedMemory).catch(() => {});
       toLink.push(storedMemory);
       stored.push(storedMemory);
       continue;
@@ -149,6 +152,8 @@ async function processEventJob(event) {
     storageRouter.saveMemory(storedMemory).catch((err) =>
       processorLog.warn({ err, id: storedMemory?.id }, "tier-router.save.failed")
     );
+    // Async graph extraction — must never block or fail memory storage
+    persistMemoryGraph(storedMemory).catch(() => {});
     toLink.push(storedMemory);
     stored.push(storedMemory);
   }
@@ -188,6 +193,8 @@ async function processSummariseJob(job) {
     storageRouter.saveMemory(stored).catch((err) =>
       processorLog.warn({ err, id: stored?.id }, "tier-router.save.failed")
     );
+    // Async graph extraction — must never block or fail memory storage
+    persistMemoryGraph(stored).catch(() => {});
     await linkBatchMemoryRelationships([stored]);
     return [stored];
   }

@@ -160,3 +160,14 @@ export {
   hybridRetrievalService,
   HYBRID_WEIGHTS_DEFAULTS
 } from "./services/hybridRetrievalService.js";
+
+// ─── Memory Graph (entity + relationship extraction) ──────────────────────────
+
+export {
+  ENTITY_TYPE,
+  VALID_ENTITY_TYPES,
+  REL_TYPE,
+  VALID_REL_TYPES,
+  extractEntities,
+  extractRelationships
+} from "./graph/index.js";

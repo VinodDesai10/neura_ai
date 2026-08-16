@@ -665,6 +665,17 @@ export async function getMemoryGraphStats(sessionId) {
   }
 }
 
+// ─── Internal driver helpers (exported for graphService.js) ──────────────────
+// These are prefixed with _ to signal they are infrastructure-internal and
+// should not be imported by application services.
+
+/** @internal */
+export { isNeo4jEnabled as _isNeo4jEnabled };
+/** @internal */
+export { getDriver as _getDriver };
+/** @internal */
+export { ensureNeo4jReady as _ensureNeo4jReady };
+
 export async function getNeo4jHealth() {
   if (!isNeo4jEnabled()) {
     return {

@@ -173,51 +173,75 @@ export function createCandidateFetcher(stores = {}) {
     //   1. Give the candidate itself a graphScore proportional to how many
     //      neighbours it has.
     //   2. Add any new graph-only neighbours as additional candidates.
+    //   3. If the graph store exposes getGraphContext(), use entity count as
+    //      an additional signal that boosts the graph score further.
     const graphOnlyCandidates = [];
 
     await Promise.all(
       deduped.slice(0, topK * 2).map(async (candidate) => {
         try {
-          const similar = await graphStore.findSimilarMemories(
-            candidate.id,
-            Math.max(3, Math.ceil(topK / 2))
-          );
+          // Parallel: fetch similar memories + graph context (if available)
+          const [similar, graphCtx] = await Promise.all([
+            graphStore.findSimilarMemories(
+              candidate.id,
+              Math.max(3, Math.ceil(topK / 2))
+            ).catch(() => []),
+            typeof graphStore.getGraphContext === "function"
+              ? graphStore.getGraphContext(candidate.id).catch(() => null)
+              : Promise.resolve(null)
+          ]);
 
-          if (!similar || similar.length === 0) return;
+          const hasSimilar = similar && similar.length > 0;
+          const hasCtx     = graphCtx && (graphCtx.entityCount > 0 || graphCtx.relCount > 0);
 
-          // Boost the candidate's graphScore based on neighbour count
-          candidate._hybrid.graphScore = Math.min(
-            1,
-            0.3 + (similar.length / 5) * 0.7
-          );
+          if (!hasSimilar && !hasCtx) return;
+
+          // Derive graphScore from both signals
+          let graphScore = 0;
+
+          if (hasSimilar) {
+            // Base score from similar-memory neighbours
+            graphScore = Math.max(graphScore, 0.3 + (similar.length / 5) * 0.5);
+          }
+
+          if (hasCtx) {
+            // Boost from rich entity/relationship data for this memory
+            const entityBoost = Math.min(0.3, (graphCtx.entityCount / 10) * 0.3);
+            const relBoost    = Math.min(0.15, (graphCtx.relCount / 10) * 0.15);
+            graphScore = Math.max(graphScore, 0.25 + entityBoost + relBoost);
+          }
+
+          candidate._hybrid.graphScore = Math.min(1, graphScore);
 
           // Graph-only neighbours not already in the candidate set
-          for (const neighbour of similar) {
-            if (!neighbour?.id) continue;
-            if (deduped.some((c) => c.id === neighbour.id)) continue;
-            if (graphOnlyCandidates.some((c) => c.id === neighbour.id)) continue;
+          if (hasSimilar) {
+            for (const neighbour of similar) {
+              if (!neighbour?.id) continue;
+              if (deduped.some((c) => c.id === neighbour.id)) continue;
+              if (graphOnlyCandidates.some((c) => c.id === neighbour.id)) continue;
 
-            const text = neighbour.summary || neighbour.content || "";
-            graphOnlyCandidates.push({
-              id:      neighbour.id,
-              content: neighbour.content || "",
-              summary: neighbour.summary || "",
-              metadata: {
-                importance: Number(neighbour.importance || 0)
-              },
-              _hybrid: {
-                vectorScore:     0,
-                keywordScore:    computeKeywordScore(query, text),
-                graphScore:      Math.min(1, 0.6 + (neighbour.importance || 0) * 0.4),
-                importanceScore: 0,
-                recencyScore:    0,
-                accessFreqBonus: 0,
-                finalScore:      0,
-                sources:         [SOURCE.GRAPH],
-                reason:          "",
-                weights:         {}
-              }
-            });
+              const text = neighbour.summary || neighbour.content || "";
+              graphOnlyCandidates.push({
+                id:      neighbour.id,
+                content: neighbour.content || "",
+                summary: neighbour.summary || "",
+                metadata: {
+                  importance: Number(neighbour.importance || 0)
+                },
+                _hybrid: {
+                  vectorScore:     0,
+                  keywordScore:    computeKeywordScore(query, text),
+                  graphScore:      Math.min(1, 0.6 + (neighbour.importance || 0) * 0.4),
+                  importanceScore: 0,
+                  recencyScore:    0,
+                  accessFreqBonus: 0,
+                  finalScore:      0,
+                  sources:         [SOURCE.GRAPH],
+                  reason:          "",
+                  weights:         {}
+                }
+              });
+            }
           }
         } catch {
           // Graph unavailable for this candidate — graphScore stays 0

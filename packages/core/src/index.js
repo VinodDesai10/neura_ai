@@ -84,7 +84,14 @@ export {
   // ─── Hybrid retrieval ─────────────────────────────────────────────────────
   createHybridRetrievalService,
   hybridRetrievalService,
-  HYBRID_WEIGHTS_DEFAULTS
+  HYBRID_WEIGHTS_DEFAULTS,
+  // ─── Memory Graph ─────────────────────────────────────────────────────────
+  ENTITY_TYPE,
+  VALID_ENTITY_TYPES,
+  REL_TYPE,
+  VALID_REL_TYPES,
+  extractEntities,
+  extractRelationships
 } from "./memory/index.js";
 
 // ─── Retrieval module ─────────────────────────────────────────────────────────

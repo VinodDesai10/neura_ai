@@ -19,17 +19,23 @@ import {
   findMemoriesByDomain,
   findMemoriesByEntity
 } from "../infrastructure/relationship-graph-store.js";
+import { getGraphContext } from "../infrastructure/neo4j/graphService.js";
 import { openAIAdapter } from "./openai-adapter.js";
 
 /**
  * Graph store adapter — wraps the individual Neo4j query exports into the
  * interface expected by `createHybridRetrievalService`.
+ *
+ * `getGraphContext` exposes the structured entity/relationship data extracted
+ * by the Memory Graph pipeline so the candidateFetcher can use the entity
+ * count as an additional graph-score signal.
  */
 const graphStoreAdapter = {
   findSimilarMemories,
   findMemoriesByKeyword,
   findMemoriesByDomain,
-  findMemoriesByEntity
+  findMemoriesByEntity,
+  getGraphContext
 };
 
 /**
