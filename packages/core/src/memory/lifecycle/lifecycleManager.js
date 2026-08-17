@@ -1,227 +1,95 @@
 /**
  * packages/core/src/memory/lifecycle/lifecycleManager.js
  *
- * Orchestrates lifecycle state transitions for stored memories.
+ * Thin orchestration layer for memory lifecycle management.
  *
  * ─── Public API ───────────────────────────────────────────────────────────────
  *
- *   evaluateMemory(memory, config?)          → { state, signals, shouldUpdate }
- *   markStale(memory)                        → object  (updated memory)
- *   markConflicted(memory, conflicts)        → object  (updated memory)
- *   archiveMemory(memory)                    → object  (updated memory)
- *   reviveMemory(memory)                     → object  (updated memory)
- *   processUserMemories(userId, storageRouter, config?)  → ProcessResult
+ *   evaluateMemory(memory, config?, nowMs?)          → EvaluationResult
+ *   markStale(memory)                                → object
+ *   markConflicted(memory, conflicts)                → object
+ *   archiveMemory(memory)                            → object
+ *   reviveMemory(memory)                             → object
+ *   processUserMemories(userId, storageRouter, cfg?) → Promise<ProcessResult>
  *
- * ─── Rules ────────────────────────────────────────────────────────────────────
+ * ─── Delegation map ───────────────────────────────────────────────────────────
  *
- *   evaluateMemory drives transitions.  It is called on every processUserMemories
- *   sweep and returns the recommended new state without mutating anything.
- *   The caller (or processUserMemories) decides whether to persist.
- *
- *   Transitions:
- *     ACTIVE  → STALE      when shouldMarkStale() is true
- *     ACTIVE  → ARCHIVED   not directly — must go through STALE first
- *     STALE   → ARCHIVED   when shouldArchive() is true
- *     STALE   → ACTIVE     when reviveMemory() is called
- *     ARCHIVED → ACTIVE    when reviveMemory() is called (explicit revive)
- *     any     → CONFLICTED when markConflicted() is called externally
- *     CONFLICTED → ARCHIVED when archiveMemory() is called after resolution
- *
- * ─── Tier alignment ───────────────────────────────────────────────────────────
- *
- *   The lifecycle system nudges memories into the right physical tier by
- *   setting `metadata.tier` on the updated record.  The existing tierManager
- *   is used for the final determineTier() call, so tiers stay consistent.
- *
- *   ACTIVE     → HOT or WARM (tierManager decides)
- *   STALE      → WARM (forced)
- *   CONFLICTED → WARM (forced)
- *   ARCHIVED   → COLD (forced)
- *
- * ─── No monolith rule ─────────────────────────────────────────────────────────
- *
- *   Heavy lifting is delegated:
- *     computeLifecycleSignals → lifecycleScorer.js
- *     shouldMarkStale / shouldArchive → lifecycleScorer.js
- *     conflict detection → conflictDetector.js
- *     tier constants → tierManager.js
+ *   State machine / stamping  →  stateTransitions.js
+ *   Conflict pre-filtering    →  conflictCandidates.js
+ *   Signal computation        →  lifecycleScorer.js
+ *   Conflict detection        →  conflictDetector.js
+ *   Type / config constants   →  lifecycleTypes.js
  */
 
-import { determineTier, Tier } from "../services/tierManager.js";
-import { computeLifecycleSignals, shouldMarkStale, shouldArchive } from "./lifecycleScorer.js";
-import { detectConflicts } from "./conflictDetector.js";
+import { readLifecycleConfig, LifecycleState } from "./lifecycleTypes.js";
+import { detectConflicts }                      from "./conflictDetector.js";
+import { filterConflictCandidates }             from "./conflictCandidates.js";
 import {
-  LifecycleState,
-  LIFECYCLE_TIER_HINT,
-  readLifecycleConfig
-} from "./lifecycleTypes.js";
+  applyTransition,
+  withLifecycleState,   // re-exported for index.js barrel if needed
+  resolveTargetTier,    // re-exported for index.js barrel if needed
+  markStale     as _markStale,
+  markConflicted as _markConflicted,
+  archiveMemory  as _archiveMemory,
+  reviveMemory   as _reviveMemory
+} from "./stateTransitions.js";
 
-// ─── Metadata helpers ─────────────────────────────────────────────────────────
+// ─── Public API — state helpers (re-exported from stateTransitions) ───────────
 
-/**
- * Return an updated copy of `memory` with lifecycle state stamped into
- * `metadata.lifecycleState`.  Immutable — original is not mutated.
- *
- * @param {object} memory
- * @param {string} state  - One of LifecycleState values
- * @param {object} [extra] - Additional metadata fields to merge
- * @returns {object}
- */
-function withLifecycleState(memory, state, extra = {}) {
-  return {
-    ...memory,
-    metadata: {
-      ...memory.metadata,
-      lifecycleState: state,
-      updatedAt: new Date().toISOString(),
-      ...extra
-    }
-  };
-}
+/** @type {typeof _markStale} */
+export const markStale      = _markStale;
 
-/**
- * Return the physical tier that should hold a memory with `state`.
- *
- * For ACTIVE memories we let the existing tier manager decide (it considers
- * last-access recency and importance).  For STALE, CONFLICTED, and ARCHIVED
- * we override with the lifecycle tier hint.
- *
- * @param {object} memory
- * @param {string} state
- * @returns {string}  tier name
- */
-function resolveTargetTier(memory, state) {
-  if (state === LifecycleState.ACTIVE) {
-    return determineTier(memory); // existing logic handles HOT / WARM / COLD
-  }
-  return LIFECYCLE_TIER_HINT[state] ?? Tier.WARM;
-}
+/** @type {typeof _markConflicted} */
+export const markConflicted = _markConflicted;
 
-// ─── Public API ───────────────────────────────────────────────────────────────
+/** @type {typeof _archiveMemory} */
+export const archiveMemory  = _archiveMemory;
+
+/** @type {typeof _reviveMemory} */
+export const reviveMemory   = _reviveMemory;
+
+// ─── Public API — evaluation ──────────────────────────────────────────────────
 
 /**
  * Evaluate the recommended lifecycle state for a memory without mutating it.
+ *
+ * Delegates entirely to `applyTransition` in stateTransitions.js.
  *
  * @param {object} memory
  * @param {ReturnType<import("./lifecycleTypes.js").readLifecycleConfig>} [config]
  * @param {number} [nowMs]
  * @returns {{
- *   state:        string,    // recommended LifecycleState
- *   currentState: string,    // state currently stored in metadata
+ *   state:        string,
+ *   currentState: string,
  *   signals:      import("./lifecycleTypes.js").LifecycleSignals,
- *   shouldUpdate: boolean    // true when recommended state ≠ current state
+ *   shouldUpdate: boolean
  * }}
  */
 export function evaluateMemory(memory, config, nowMs) {
-  const cfg          = config ?? readLifecycleConfig();
-  const currentState = memory?.metadata?.lifecycleState ?? LifecycleState.ACTIVE;
-  const signals      = computeLifecycleSignals(memory, nowMs);
-
-  // ARCHIVED memories stay archived unless explicitly revived.
-  if (currentState === LifecycleState.ARCHIVED) {
-    return { state: LifecycleState.ARCHIVED, currentState, signals, shouldUpdate: false };
-  }
-
-  // STALE → ARCHIVED promotion
-  if (currentState === LifecycleState.STALE || currentState === LifecycleState.CONFLICTED) {
-    if (shouldArchive(signals, memory, cfg)) {
-      return { state: LifecycleState.ARCHIVED, currentState, signals, shouldUpdate: true };
-    }
-    // Stay stale/conflicted
-    return { state: currentState, currentState, signals, shouldUpdate: false };
-  }
-
-  // ACTIVE → STALE
-  if (shouldMarkStale(signals, memory, cfg)) {
-    return { state: LifecycleState.STALE, currentState, signals, shouldUpdate: true };
-  }
-
-  // ACTIVE stays ACTIVE
-  return { state: LifecycleState.ACTIVE, currentState, signals, shouldUpdate: false };
+  return applyTransition(memory, config ?? readLifecycleConfig(), nowMs);
 }
 
-/**
- * Return a copy of `memory` stamped with STALE state and moved to WARM tier.
- *
- * @param {object} memory
- * @returns {object}
- */
-export function markStale(memory) {
-  return withLifecycleState(memory, LifecycleState.STALE, { tier: Tier.WARM });
-}
+// ─── Public API — batch sweep ─────────────────────────────────────────────────
 
 /**
- * Return a copy of `memory` stamped with CONFLICTED state, including
- * the supplied conflict records in `metadata.conflicts`.
+ * Sweep all memories for a user:
+ *   1. Evaluate age / access signals → apply state transitions.
+ *   2. Pre-filter conflict candidates (cheap metadata checks).
+ *   3. Run full conflict detection only on filtered candidates.
+ *   4. Persist any changed memories via storageRouter.
  *
- * Existing conflicts are merged (deduplicated by conflictingId) so that
- * repeated calls accumulate conflict history rather than overwriting it.
+ * The conflict pre-filter (stage 2) eliminates unrelated memories before
+ * any similarity computation occurs, reducing the effective complexity from
+ * O(N²) to O(N × K) where K << N for typical memory sets.
  *
- * @param {object} memory
- * @param {import("./lifecycleTypes.js").ConflictRecord[]} conflicts
- * @returns {object}
- */
-export function markConflicted(memory, conflicts) {
-  const existing = Array.isArray(memory?.metadata?.conflicts)
-    ? memory.metadata.conflicts
-    : [];
-
-  // Merge: new conflicts win for the same conflictingId.
-  const merged = [...existing];
-  for (const newConflict of conflicts) {
-    const idx = merged.findIndex((c) => c.conflictingId === newConflict.conflictingId);
-    if (idx >= 0) {
-      merged[idx] = newConflict; // update existing record
-    } else {
-      merged.push(newConflict);
-    }
-  }
-
-  return withLifecycleState(memory, LifecycleState.CONFLICTED, {
-    tier:      Tier.WARM,
-    conflicts: merged
-  });
-}
-
-/**
- * Return a copy of `memory` stamped with ARCHIVED state and moved to COLD tier.
- *
- * @param {object} memory
- * @returns {object}
- */
-export function archiveMemory(memory) {
-  return withLifecycleState(memory, LifecycleState.ARCHIVED, { tier: Tier.COLD });
-}
-
-/**
- * Revive an ARCHIVED, STALE, or CONFLICTED memory back to ACTIVE.
- *
- * Clears the `conflicts` field and re-runs `determineTier` so the memory
- * lands in the right physical tier given its current importance / recency.
- *
- * @param {object} memory
- * @returns {object}
- */
-export function reviveMemory(memory) {
-  const revivedTier = determineTier(memory);
-  return withLifecycleState(memory, LifecycleState.ACTIVE, {
-    tier:      revivedTier,
-    conflicts: []
-  });
-}
-
-/**
- * Sweep all memories for a user, evaluate their lifecycle state, run
- * conflict detection, and persist any state changes via `storageRouter`.
- *
- * @param {string}  userId
+ * @param {string} userId
  * @param {{
  *   searchUserMemories: (userId: string) => Promise<object[]>,
  *   updateMemory:       (id: string, patch: object) => Promise<object|null>
  * }} storageRouter
  * @param {ReturnType<import("./lifecycleTypes.js").readLifecycleConfig>} [config]
  * @returns {Promise<{
- *   evaluated: number,
+ *   evaluated:   number,
  *   transitions: Array<{ id: string, from: string, to: string }>,
  *   conflicts:   Array<{ id: string, conflictCount: number }>,
  *   errors:      Array<{ id: string, error: string }>
@@ -243,7 +111,7 @@ export async function processUserMemories(userId, storageRouter, config) {
     };
   }
 
-  const transitions = [];
+  const transitions  = [];
   const conflictsOut = [];
   const errors       = [];
 
@@ -256,32 +124,34 @@ export async function processUserMemories(userId, storageRouter, config) {
       // Skip archived — no automatic transitions out of ARCHIVED.
       if (currentState === LifecycleState.ARCHIVED) continue;
 
-      // ── Step 1: evaluate age / access signals ───────────────────────────────
-      const evaluation = evaluateMemory(memory, cfg);
+      // ── Step 1: evaluate age / access signals ──────────────────────────────
+      const evaluation = applyTransition(memory, cfg);
       let updated      = memory;
       let newState     = currentState;
 
       if (evaluation.shouldUpdate) {
         if (evaluation.state === LifecycleState.ARCHIVED) {
-          updated  = archiveMemory(memory);
+          updated  = _archiveMemory(memory);
         } else if (evaluation.state === LifecycleState.STALE) {
-          updated  = markStale(memory);
+          updated  = _markStale(memory);
         }
         newState = evaluation.state;
       }
 
-      // ── Step 2: conflict detection (run for ACTIVE and STALE memories) ──────
+      // ── Step 2: conflict detection (ACTIVE and STALE only) ─────────────────
       if (
         newState !== LifecycleState.ARCHIVED &&
         newState !== LifecycleState.CONFLICTED
       ) {
-        // Compare against all other memories (exclude self)
-        const peers  = allMemories.filter((m) => m.id !== memory.id);
-        const result = detectConflicts(updated, peers, cfg);
+        // Pre-filter: only pass candidates that share type, category, and tokens.
+        // This is the key optimisation — eliminates O(n²) similarity calls for
+        // unrelated memories.
+        const candidates = filterConflictCandidates(updated, allMemories);
+        const result     = detectConflicts(updated, candidates, cfg);
 
         if (result.hasConflict) {
-          updated   = markConflicted(updated, result.conflicts);
-          newState  = LifecycleState.CONFLICTED;
+          updated  = _markConflicted(updated, result.conflicts);
+          newState = LifecycleState.CONFLICTED;
           conflictsOut.push({
             id:            memory.id,
             conflictCount: result.conflicts.length
@@ -289,8 +159,8 @@ export async function processUserMemories(userId, storageRouter, config) {
         }
       }
 
-      // ── Step 3: persist if anything changed ─────────────────────────────────
-      const stateChanged = newState !== currentState;
+      // ── Step 3: persist if anything changed ────────────────────────────────
+      const stateChanged     = newState !== currentState;
       const conflictsChanged =
         newState === LifecycleState.CONFLICTED &&
         currentState !== LifecycleState.CONFLICTED;

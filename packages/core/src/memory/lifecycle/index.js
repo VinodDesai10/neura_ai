@@ -18,6 +18,16 @@
  *     shouldMarkStale
  *     shouldArchive
  *
+ *   State transitions (stateTransitions.js)
+ *     withLifecycleState
+ *     resolveTargetTier
+ *     applyTransition
+ *
+ *   Conflict candidate pre-filter (conflictCandidates.js)
+ *     filterConflictCandidates
+ *     buildTokenSet
+ *     areTypesCompatible
+ *
  *   Conflict detection (conflictDetector.js)
  *     detectConflicts
  *     buildConflictRecord
@@ -54,6 +64,22 @@ export {
   shouldMarkStale,
   shouldArchive
 } from "./lifecycleScorer.js";
+
+// ─── State transitions ────────────────────────────────────────────────────────
+
+export {
+  withLifecycleState,
+  resolveTargetTier,
+  applyTransition
+} from "./stateTransitions.js";
+
+// ─── Conflict candidate pre-filter ───────────────────────────────────────────
+
+export {
+  filterConflictCandidates,
+  buildTokenSet,
+  areTypesCompatible
+} from "./conflictCandidates.js";
 
 // ─── Conflict detection ───────────────────────────────────────────────────────
 
