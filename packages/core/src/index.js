@@ -91,7 +91,28 @@ export {
   REL_TYPE,
   VALID_REL_TYPES,
   extractEntities,
-  extractRelationships
+  extractRelationships,
+  // ─── Lifecycle management ──────────────────────────────────────────────────
+  LifecycleState,
+  VALID_LIFECYCLE_STATES,
+  LIFECYCLE_DEFAULTS,
+  LIFECYCLE_CONFIG_KEYS,
+  LIFECYCLE_TIER_HINT,
+  readLifecycleConfig,
+  computeLifecycleSignals,
+  shouldMarkStale,
+  shouldArchive,
+  detectConflicts,
+  buildConflictRecord,
+  evaluateMemory,
+  markStale,
+  markConflicted,
+  archiveMemory,
+  reviveMemory,
+  processUserMemories,
+  applyLifecyclePenalty,
+  filterArchivedFromRetrieval,
+  withLifecycleContext
 } from "./memory/index.js";
 
 // ─── Retrieval module ─────────────────────────────────────────────────────────

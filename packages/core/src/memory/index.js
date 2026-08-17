@@ -171,3 +171,28 @@ export {
   extractEntities,
   extractRelationships
 } from "./graph/index.js";
+
+// ─── Lifecycle management ──────────────────────────────────────────────────────
+
+export {
+  LifecycleState,
+  VALID_LIFECYCLE_STATES,
+  LIFECYCLE_DEFAULTS,
+  LIFECYCLE_CONFIG_KEYS,
+  LIFECYCLE_TIER_HINT,
+  readLifecycleConfig,
+  computeLifecycleSignals,
+  shouldMarkStale,
+  shouldArchive,
+  detectConflicts,
+  buildConflictRecord,
+  evaluateMemory,
+  markStale,
+  markConflicted,
+  archiveMemory,
+  reviveMemory,
+  processUserMemories,
+  applyLifecyclePenalty,
+  filterArchivedFromRetrieval,
+  withLifecycleContext
+} from "./lifecycle/index.js";
