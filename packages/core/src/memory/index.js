@@ -196,3 +196,35 @@ export {
   filterArchivedFromRetrieval,
   withLifecycleContext
 } from "./lifecycle/index.js";
+
+// ─── Consolidation ─────────────────────────────────────────────────────────────
+
+export {
+  // Types / constants
+  ConsolidationStatus,
+  VALID_CONSOLIDATION_STATUSES,
+  ConflictSeverity,
+  CONSOLIDATION_DEFAULTS,
+  CONSOLIDATION_CONFIG_KEYS,
+  readConsolidationConfig,
+  // Candidate grouping
+  groupConsolidationCandidates,
+  inferTopic,
+  buildConsolidationTokenSet,
+  isEligibleForConsolidation,
+  // Engine
+  findConsolidationCandidates,
+  consolidateMemories,
+  updateConsolidatedMemory,
+  shouldReConsolidate,
+  getProvenance,
+  runConsolidationSweep,
+  // Store
+  createInMemoryDriver,
+  createConsolidationStore,
+  consolidationStore,
+  // Retrieval integration
+  applyConsolidationScorePenalty,
+  enrichWithConsolidations,
+  withSourceEvidence
+} from "./consolidation/index.js";
