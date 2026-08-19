@@ -249,6 +249,63 @@ export const factualMemoryStore = {
       .map((e) => e.memory);
   },
 
+  // ── updateLifecycleState ───────────────────────────────────────────────────
+  /**
+   * Update only the lifecycle-related metadata fields on a factual memory row.
+   *
+   * This is a targeted update used by `LifecycleSyncService` so that a lifecycle
+   * state change does not have to re-upload the full memory (especially useful
+   * because we may not have the embedding available at lifecycle-sweep time).
+   *
+   * Updates the `metadata` JSONB column in-place, merging only:
+   *   lifecycleState, updatedAt, tier, conflicts (if present)
+   *
+   * @param {string} id              - Memory ID
+   * @param {string} lifecycleState  - New LifecycleState value
+   * @param {object} metadata        - Full metadata object from the updated memory
+   * @returns {Promise<boolean>}     true on success, false if not found
+   */
+  async updateLifecycleState(id, lifecycleState, metadata) {
+    if (await ensurePostgresReady()) {
+      const sql = getPostgresClient();
+
+      // Build a deterministic partial-metadata patch so we don't overwrite fields
+      // that live in the metadata column but are unrelated to lifecycle (e.g. tags,
+      // embedding, importance).  We merge only the lifecycle-critical fields.
+      const patch = {
+        lifecycleState,
+        updatedAt: metadata?.updatedAt ?? new Date().toISOString(),
+        tier:      metadata?.tier ?? null
+      };
+      if (Array.isArray(metadata?.conflicts)) {
+        patch.conflicts = metadata.conflicts;
+      }
+
+      const rows = await sql`
+        update factual_memories
+        set
+          metadata   = metadata || ${sql.json(patch)},
+          updated_at = ${patch.updatedAt}
+        where id = ${id}
+        returning id
+      `;
+
+      return rows.length > 0;
+    }
+
+    // In-memory fallback
+    const existing = factualMemories.find((m) => m.id === id);
+    if (!existing) return false;
+    existing.metadata = {
+      ...existing.metadata,
+      lifecycleState,
+      updatedAt: metadata?.updatedAt ?? new Date().toISOString(),
+      ...(metadata?.tier      ? { tier:      metadata.tier      } : {}),
+      ...(Array.isArray(metadata?.conflicts) ? { conflicts: metadata.conflicts } : {})
+    };
+    return true;
+  },
+
   // ── all ───────────────────────────────────────────────────────────────────
   async all() {
     if (await ensurePostgresReady()) {

@@ -19,6 +19,7 @@ import {
   queryQdrantPoints,
   scrollAllQdrantPoints,
   scrollQdrantPoints,
+  setQdrantPayload,
   upsertQdrantPoint
 } from "./qdrant-client.js";
 
@@ -223,6 +224,35 @@ export const vectorMemoryStore = {
       .sort((a, b) => b.score - a.score)
       .slice(0, cfg.topK)
       .map((e) => e.memory);
+  },
+
+  // ── updatePayloadMetadata ──────────────────────────────────────────────────
+  /**
+   * Partially update the `metadata` field of a Qdrant point payload without
+   * touching the embedding vector.
+   *
+   * This is the correct path for lifecycle-state updates — Qdrant's PATCH
+   * /points/payload endpoint merges the supplied object into the existing
+   * payload so only the listed keys are changed.
+   *
+   * @param {string} id        - Memory ID (Qdrant point UUID)
+   * @param {object} metadata  - Full metadata object from the updated memory.
+   *                             Only lifecycle-critical fields are sent.
+   * @returns {Promise<boolean>}  true on success (Qdrant configured + call succeeded)
+   */
+  async updatePayloadMetadata(id, metadata) {
+    if (isQdrantConfigured()) {
+      // We set the `metadata` key in the payload to the new value.
+      // This keeps the full metadata sub-object consistent with PostgreSQL.
+      await setQdrantPayload(id, { metadata });
+      return true;
+    }
+
+    // In-memory fallback
+    const existing = vectorMemories.find((m) => m.id === id);
+    if (!existing) return false;
+    existing.metadata = { ...existing.metadata, ...metadata };
+    return true;
   },
 
   // ── all ───────────────────────────────────────────────────────────────────

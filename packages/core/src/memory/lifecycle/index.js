@@ -99,6 +99,13 @@ export {
   processUserMemories
 } from "./lifecycleManager.js";
 
+// ─── Lifecycle sync service ───────────────────────────────────────────────────
+
+export {
+  createLifecycleSyncService,
+  NOOP_SYNC_SERVICE
+} from "./lifecycleSyncService.js";
+
 // ─── Retrieval integration ────────────────────────────────────────────────────
 
 export {

@@ -136,6 +136,28 @@ export async function upsertQdrantPoint(point) {
   });
 }
 
+/**
+ * Perform a partial payload update on a single point.
+ *
+ * Uses the Qdrant PATCH /points/payload endpoint which merges the supplied
+ * `payload` object into the existing point payload without touching the vector
+ * or other payload fields not listed here.  This is the correct path for
+ * lifecycle-state updates — we never re-upload the embedding.
+ *
+ * @param {string|number} pointId   - UUID string (or integer) of the point
+ * @param {object}        payload   - Partial payload to merge in
+ * @returns {Promise<void>}
+ */
+export async function setQdrantPayload(pointId, payload) {
+  await callQdrant(`/collections/${getCollectionName()}/points/payload`, {
+    method: "POST",
+    body: JSON.stringify({
+      payload,
+      points: [pointId]
+    })
+  });
+}
+
 export async function queryQdrantPoints({ vector, sessionId, limit = 10, strictSession = false }) {
   let payload;
 

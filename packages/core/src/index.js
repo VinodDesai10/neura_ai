@@ -112,7 +112,10 @@ export {
   processUserMemories,
   applyLifecyclePenalty,
   filterArchivedFromRetrieval,
-  withLifecycleContext
+  withLifecycleContext,
+  // ─── Lifecycle sync service ───────────────────────────────────────────────
+  createLifecycleSyncService,
+  NOOP_SYNC_SERVICE
 } from "./memory/index.js";
 
 // ─── Consolidation module ─────────────────────────────────────────────────────

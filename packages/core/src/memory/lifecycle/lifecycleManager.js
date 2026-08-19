@@ -33,6 +33,7 @@ import {
   archiveMemory  as _archiveMemory,
   reviveMemory   as _reviveMemory
 } from "./stateTransitions.js";
+import { NOOP_SYNC_SERVICE } from "./lifecycleSyncService.js";
 
 // ─── Public API — state helpers (re-exported from stateTransitions) ───────────
 
@@ -76,11 +77,18 @@ export function evaluateMemory(memory, config, nowMs) {
  *   1. Evaluate age / access signals → apply state transitions.
  *   2. Pre-filter conflict candidates (cheap metadata checks).
  *   3. Run full conflict detection only on filtered candidates.
- *   4. Persist any changed memories via storageRouter.
+ *   4. Persist any changed memories via storageRouter (tier repositories).
+ *   5. Fan out the new lifecycle state to all secondary stores via syncService
+ *      (PostgreSQL factual_memories, Qdrant payload, Neo4j Memory node).
  *
  * The conflict pre-filter (stage 2) eliminates unrelated memories before
  * any similarity computation occurs, reducing the effective complexity from
  * O(N²) to O(N × K) where K << N for typical memory sets.
+ *
+ * Partial-failure handling (stage 5):
+ *   A failure in one secondary store never rolls back the tier-repository
+ *   update and never aborts the sweep.  Sync failures are captured in
+ *   `result.syncFailures` so callers can log / retry them.
  *
  * @param {string} userId
  * @param {{
@@ -88,15 +96,20 @@ export function evaluateMemory(memory, config, nowMs) {
  *   updateMemory:       (id: string, patch: object) => Promise<object|null>
  * }} storageRouter
  * @param {ReturnType<import("./lifecycleTypes.js").readLifecycleConfig>} [config]
+ * @param {{ syncLifecycleState(memory: object): Promise<object> }} [syncService]
+ *   Optional lifecycle sync service.  When omitted the tier update is the
+ *   only persistence step (no Postgres/Qdrant/Neo4j propagation).
  * @returns {Promise<{
- *   evaluated:   number,
- *   transitions: Array<{ id: string, from: string, to: string }>,
- *   conflicts:   Array<{ id: string, conflictCount: number }>,
- *   errors:      Array<{ id: string, error: string }>
+ *   evaluated:    number,
+ *   transitions:  Array<{ id: string, from: string, to: string }>,
+ *   conflicts:    Array<{ id: string, conflictCount: number }>,
+ *   errors:       Array<{ id: string, error: string }>,
+ *   syncFailures: Array<{ id: string, backend: string, error: string }>
  * }>}
  */
-export async function processUserMemories(userId, storageRouter, config) {
-  const cfg = config ?? readLifecycleConfig();
+export async function processUserMemories(userId, storageRouter, config, syncService) {
+  const cfg          = config ?? readLifecycleConfig();
+  const syncSvc      = syncService ?? NOOP_SYNC_SERVICE;
 
   /** @type {object[]} */
   let allMemories;
@@ -104,16 +117,18 @@ export async function processUserMemories(userId, storageRouter, config) {
     allMemories = await storageRouter.searchUserMemories(userId);
   } catch (err) {
     return {
-      evaluated:   0,
-      transitions: [],
-      conflicts:   [],
-      errors:      [{ id: "load", error: err instanceof Error ? err.message : String(err) }]
+      evaluated:    0,
+      transitions:  [],
+      conflicts:    [],
+      errors:       [{ id: "load", error: err instanceof Error ? err.message : String(err) }],
+      syncFailures: []
     };
   }
 
   const transitions  = [];
   const conflictsOut = [];
   const errors       = [];
+  const syncFailures = [];
 
   for (const memory of allMemories) {
     if (!memory?.id) continue;
@@ -159,7 +174,7 @@ export async function processUserMemories(userId, storageRouter, config) {
         }
       }
 
-      // ── Step 3: persist if anything changed ────────────────────────────────
+      // ── Step 3: persist tier repositories if anything changed ──────────────
       const stateChanged     = newState !== currentState;
       const conflictsChanged =
         newState === LifecycleState.CONFLICTED &&
@@ -168,6 +183,15 @@ export async function processUserMemories(userId, storageRouter, config) {
       if (stateChanged || conflictsChanged) {
         await storageRouter.updateMemory(memory.id, { metadata: updated.metadata });
         transitions.push({ id: memory.id, from: currentState, to: newState });
+
+        // ── Step 4: fan out to secondary stores ─────────────────────────────
+        // syncLifecycleState never throws — it returns a SyncResult.
+        const syncResult = await syncSvc.syncLifecycleState(updated);
+        if (!syncResult.success) {
+          for (const failure of syncResult.failures) {
+            syncFailures.push({ id: memory.id, ...failure });
+          }
+        }
       }
     } catch (err) {
       errors.push({
@@ -178,9 +202,10 @@ export async function processUserMemories(userId, storageRouter, config) {
   }
 
   return {
-    evaluated:   allMemories.length,
+    evaluated:    allMemories.length,
     transitions,
-    conflicts:   conflictsOut,
-    errors
+    conflicts:    conflictsOut,
+    errors,
+    syncFailures
   };
 }

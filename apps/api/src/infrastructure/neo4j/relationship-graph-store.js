@@ -676,6 +676,63 @@ export { getDriver as _getDriver };
 /** @internal */
 export { ensureNeo4jReady as _ensureNeo4jReady };
 
+/**
+ * Update the lifecycle-state properties on an existing Memory node in Neo4j.
+ *
+ * This is a targeted SET — it only touches `lifecycleState`, `updatedAt`,
+ * and optionally `tier` and `conflicts`.  It does NOT alter the node's
+ * structural relationships (keywords, tags, sessions etc.).
+ *
+ * When Neo4j is not configured or the node does not exist the function
+ * returns `false` so the caller can record the skip without treating it as
+ * a hard failure.
+ *
+ * @param {string}      id             - Memory ID (neo4j constraint: memory_id)
+ * @param {string}      lifecycleState - New LifecycleState value
+ * @param {object}      metadata       - Full metadata object from the updated memory.
+ *                                       The relevant fields are extracted here.
+ * @returns {Promise<boolean>}  true = node updated; false = Neo4j disabled or not found
+ */
+export async function updateMemoryLifecycleState(id, lifecycleState, metadata) {
+  try {
+    if (!(await ensureNeo4jReady())) {
+      return false;
+    }
+
+    const session = getDriver().session({
+      database: process.env.NEO4J_DATABASE || "neo4j"
+    });
+
+    try {
+      const result = await session.executeWrite((tx) =>
+        tx.run(
+          `
+          match (m:Memory {id: $memoryId})
+          set
+            m.lifecycleState = $lifecycleState,
+            m.updatedAt      = $updatedAt,
+            m.tier           = $tier
+          return m.id as id
+          `,
+          {
+            memoryId:       id,
+            lifecycleState,
+            updatedAt:      metadata?.updatedAt ?? new Date().toISOString(),
+            tier:           metadata?.tier ?? null
+          }
+        )
+      );
+
+      return result.records.length > 0;
+    } finally {
+      await session.close();
+    }
+  } catch (error) {
+    graphLog.warn({ err: error, memoryId: id }, "Neo4j lifecycle state update skipped");
+    return false;
+  }
+}
+
 export async function getNeo4jHealth() {
   if (!isNeo4jEnabled()) {
     return {
