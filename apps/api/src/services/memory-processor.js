@@ -14,15 +14,22 @@
  *     embeds the result, and stores it via vectorMemoryStore
  *   - All new memories are additionally routed through storageRouter so they
  *     are placed in the correct hot/warm/cold tier automatically.
+ *   - After each event job, a non-blocking consolidation sweep runs against the
+ *     PostgreSQL-backed consolidationStore so ConsolidatedMemory records survive
+ *     process restarts (C-2).
  */
 
 import {
   computeMemoryFingerprint,
-  extractMemoryCandidates
+  extractMemoryCandidates,
+  runConsolidationSweep
 } from "@neura/core";
 // Use the API-layer storage router so memories are persisted via real Redis
 // and PostgreSQL adapters rather than the core-package in-memory singletons.
 import { storageRouter } from "../infrastructure/tier/index.js";
+// PostgreSQL-backed consolidation store (falls back to in-memory when Postgres
+// is not configured — safe to import unconditionally).
+import { consolidationStore } from "../infrastructure/consolidation-store.js";
 import { factualMemoryStore }         from "../infrastructure/factual-memory-store.js";
 import { vectorMemoryStore }          from "../infrastructure/vector-memory-store.js";
 import { linkBatchMemoryRelationships } from "../infrastructure/relationship-graph-store.js";
@@ -160,6 +167,18 @@ async function processEventJob(event) {
 
   if (toLink.length > 0) {
     await linkBatchMemoryRelationships(toLink);
+  }
+
+  // ── Non-blocking consolidation sweep ─────────────────────────────────────
+  // After new memories are stored, opportunistically run a consolidation sweep
+  // for the user so ConsolidatedMemory records are kept up to date in the
+  // PostgreSQL-backed consolidationStore.  Failures must never block or fail
+  // the memory storage step above.
+  const userId = event?.userId || event?.event?.userId || null;
+  if (userId) {
+    runConsolidationSweep(userId, storageRouter, consolidationStore).catch((err) =>
+      processorLog.warn({ err, userId }, "consolidation.sweep.failed")
+    );
   }
 
   return stored.filter(Boolean);
