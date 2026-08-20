@@ -19,7 +19,9 @@
 import {
   buildContextPrompt,
   computeMemoryFingerprint,
-  extractMemoryCandidates
+  extractMemoryCandidates,
+  enrichWithConsolidations,
+  consolidationStore
 } from "@neura/core";
 import { isSmallTalk } from "@neura/shared";
 import { rawEventVault }       from "../infrastructure/raw-event-vault.js";
@@ -100,9 +102,18 @@ async function retrieveWorkingSet({ sessionId, userId, message, seedMemories = [
 
   if (!smallTalk && cachedRetrieval?.activeMemories) {
     const retrievalStart = process.hrtime.bigint();
-    const activeMemories = deduplicateAndRerank(
+    const reranked = deduplicateAndRerank(
       [...relevantSeedMemories, ...cachedRetrieval.activeMemories],
       { querySessionId: sessionId }
+    );
+    // ── Consolidation enrichment (cache-hit path) ────────────────────────
+    // Inject consolidated memories for the user after the first ranked result.
+    // Fails silently — enrichWithConsolidations catches all store errors
+    // internally and returns the original ranked list unchanged.
+    const activeMemories = await enrichWithConsolidations(
+      reranked,
+      consolidationStore,
+      { userId, topK: 3 }
     );
     const retrievalDurationSec = Number(process.hrtime.bigint() - retrievalStart) / 1e9;
 
@@ -183,11 +194,22 @@ async function retrieveWorkingSet({ sessionId, userId, message, seedMemories = [
   const finalActiveMemories = smallTalk ? [] : workingSet;
   const finalRecentContext  = smallTalk ? [] : recentContext;
 
+  // ── Consolidation enrichment (full retrieval path) ───────────────────────
+  // Inject consolidated memories for the user into the ranked working set.
+  // Only runs when there are active memories and a userId is present.
+  // Fails silently — enrichWithConsolidations catches all store errors
+  // internally and returns the original list unchanged.
+  const enrichedActiveMemories = await enrichWithConsolidations(
+    finalActiveMemories,
+    consolidationStore,
+    { userId, topK: 3 }
+  );
+
   const retrievalDurationSec = Number(process.hrtime.bigint() - retrievalStart) / 1e9;
 
   try {
     retrievalRequestsTotal.inc({ cache_hit: "false" });
-    retrievalResultsCount.observe({ cache_hit: "false" }, finalActiveMemories.length);
+    retrievalResultsCount.observe({ cache_hit: "false" }, enrichedActiveMemories.length);
     retrievalDurationSeconds.observe({ cache_hit: "false" }, retrievalDurationSec);
   } catch {
     // Instrumentation must never break retrieval
@@ -196,11 +218,11 @@ async function retrieveWorkingSet({ sessionId, userId, message, seedMemories = [
   await redisRuntimeStore.setCachedRetrieval({
     sessionId,
     message,
-    activeMemories: finalActiveMemories
+    activeMemories: enrichedActiveMemories
   });
-  await redisRuntimeStore.markMemoryHits(finalActiveMemories);
+  await redisRuntimeStore.markMemoryHits(enrichedActiveMemories);
   await workingMemoryStore.write(sessionId, {
-    activeMemories:  finalActiveMemories,
+    activeMemories:  enrichedActiveMemories,
     recentContext:   finalRecentContext,
     retrievalCache:  { hit: false, carriedForward: previousMemories.length }
   });
