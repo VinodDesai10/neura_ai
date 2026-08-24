@@ -157,7 +157,8 @@ export const vectorMemoryStore = {
               importanceScore: Number(memory.metadata?.importance || 0),
               timestamp:       memory.metadata?.timestamp || null,
               sessionId:       memory.sessionId,
-              querySessionId:  sessionId
+              querySessionId:  sessionId,
+              lifecycleState:  memory.metadata?.lifecycleState
             },
             cfg
           );
@@ -204,7 +205,8 @@ export const vectorMemoryStore = {
             importanceScore: Number(memory.metadata?.importance || 0),
             timestamp:       memory.metadata?.timestamp || null,
             sessionId:       memory.sessionId,
-            querySessionId:  sessionId
+            querySessionId:  sessionId,
+            lifecycleState:  memory.metadata?.lifecycleState
           },
           cfg
         );

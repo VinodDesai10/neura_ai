@@ -179,7 +179,8 @@ export const factualMemoryStore = {
               importanceScore: Number(memory.metadata?.importance || 0),
               timestamp:       memory.metadata?.timestamp || null,
               sessionId:       memory.sessionId,
-              querySessionId:  sessionId
+              querySessionId:  sessionId,
+              lifecycleState:  memory.metadata?.lifecycleState
             },
             cfg
           );
@@ -226,7 +227,8 @@ export const factualMemoryStore = {
             importanceScore,
             timestamp:       memory.metadata?.timestamp || null,
             sessionId:       memory.sessionId,
-            querySessionId:  sessionId
+            querySessionId:  sessionId,
+            lifecycleState:  memory.metadata?.lifecycleState
           },
           cfg
         );

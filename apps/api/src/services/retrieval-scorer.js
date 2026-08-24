@@ -17,6 +17,7 @@
  */
 
 import { readRetrievalConfig } from "@neura/shared";
+import { LifecycleState, readLifecycleConfig } from "@neura/core";
 import {
   rerankerRequestsTotal,
   rerankerDurationSeconds,
@@ -127,6 +128,14 @@ export function applyTopicalRelevancePenalty({ memoryId, vectorScore, keywordSco
 /**
  * Compute a weighted hybrid retrieval score for a single memory.
  *
+ * Lifecycle state penalties are applied after all other scoring factors,
+ * using the constants defined in lifecycleTypes.js:
+ *   ACTIVE     → no change (multiplier = 1.0)
+ *   STALE      → score × staleScorePenalty    (default 0.60)
+ *   CONFLICTED → score × conflictScorePenalty  (default 0.80)
+ *   ARCHIVED   → score × 0.05 (effectively hidden; callers should filter these out)
+ *   missing    → treated as ACTIVE (backward compatible)
+ *
  * @param {{
  *   memoryId?:      string,   – optional id forwarded to penalty logging
  *   vectorScore:    number,   – Qdrant cosine similarity (0–1) or -1 when unavailable
@@ -134,21 +143,24 @@ export function applyTopicalRelevancePenalty({ memoryId, vectorScore, keywordSco
  *   importanceScore:number,   – stored metadata.importance (0–1)
  *   timestamp:      string|null,
  *   sessionId:      string,
- *   querySessionId: string
+ *   querySessionId: string,
+ *   lifecycleState?: string,  – memory.metadata.lifecycleState; omit for backward compat
  * }} params
  * @param {object} [cfg]  – override readRetrievalConfig() for testing
  * @returns {{
- *   score:            number,
- *   vectorScore:      number,
- *   lexicalScore:     number,
- *   importanceScore:  number,
- *   recencyScore:     number,
- *   sessionBonus:     number,
- *   topicalPenaltyApplied: boolean
+ *   score:                   number,
+ *   vectorScore:             number,
+ *   lexicalScore:            number,
+ *   importanceScore:         number,
+ *   recencyScore:            number,
+ *   sessionBonus:            number,
+ *   topicalPenaltyApplied:   boolean,
+ *   lifecycleState:          string,
+ *   lifecyclePenalty:        number
  * }}
  */
 export function computeHybridScore(
-  { memoryId, vectorScore, lexicalScore, importanceScore, timestamp, sessionId, querySessionId },
+  { memoryId, vectorScore, lexicalScore, importanceScore, timestamp, sessionId, querySessionId, lifecycleState },
   cfg
 ) {
   const config = cfg ?? readRetrievalConfig();
@@ -182,14 +194,41 @@ export function computeHybridScore(
     config
   });
 
+  // ── Lifecycle penalty ──────────────────────────────────────────────────────
+  // Reuse the penalty constants from lifecycleTypes.js — do not invent new values.
+  // Missing / unknown state → treated as ACTIVE (backward compatible).
+  const effectiveState = lifecycleState ?? LifecycleState.ACTIVE;
+  const lifecycleCfg   = readLifecycleConfig();
+  let lifecyclePenalty = 1.0;
+
+  switch (effectiveState) {
+    case LifecycleState.STALE:
+      lifecyclePenalty = lifecycleCfg.staleScorePenalty;       // default 0.60
+      break;
+    case LifecycleState.CONFLICTED:
+      lifecyclePenalty = lifecycleCfg.conflictScorePenalty;    // default 0.80
+      break;
+    case LifecycleState.ARCHIVED:
+      // Archived memories should be filtered before scoring, but guard defensively
+      lifecyclePenalty = 0.05;
+      break;
+    default:
+      // ACTIVE or any unrecognised string → no penalty
+      break;
+  }
+
+  const finalScore = Math.min(1, penalisedScore * lifecyclePenalty);
+
   return {
-    score:                 Math.min(1, penalisedScore),
+    score:                 finalScore,
     vectorScore:           normVector,
     lexicalScore:          normLexical,
     importanceScore:       normImportance,
     recencyScore:          recency,
     sessionBonus,
-    topicalPenaltyApplied: penaltyEnabled && penalisedScore !== rawScore
+    topicalPenaltyApplied: penaltyEnabled && penalisedScore !== rawScore,
+    lifecycleState:        effectiveState,
+    lifecyclePenalty
   };
 }
 
@@ -255,7 +294,8 @@ export function deduplicateAndRerank(memories, context, cfg) {
         importanceScore,
         timestamp,
         sessionId:      memory.sessionId,
-        querySessionId
+        querySessionId,
+        lifecycleState: memory.metadata?.lifecycleState
       },
       config
     );
