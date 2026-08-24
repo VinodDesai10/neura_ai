@@ -7,5 +7,6 @@ export {
   findMemoriesByEntity,
   findSimilarMemories,
   getMemoryGraphStats,
-  getNeo4jHealth
+  getNeo4jHealth,
+  deleteMemory
 } from "./neo4j/relationship-graph-store.js";

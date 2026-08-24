@@ -14,6 +14,7 @@ import { computeMemoryFingerprint, scoreQueryOverlap } from "@neura/core";
 import { readRetrievalConfig } from "@neura/shared";
 import { computeHybridScore } from "../../services/retrieval-scorer.js";
 import {
+  deleteQdrantPoint,
   ensureQdrantReady,
   isQdrantConfigured,
   queryQdrantPoints,
@@ -224,6 +225,36 @@ export const vectorMemoryStore = {
       .sort((a, b) => b.score - a.score)
       .slice(0, cfg.topK)
       .map((e) => e.memory);
+  },
+
+  // ── delete ────────────────────────────────────────────────────────────────
+  /**
+   * Hard-delete a vector point by ID.
+   *
+   * Always removes the record from the in-memory fallback array (in case it
+   * was stored there during an earlier write with no embedding).  When Qdrant
+   * is configured it also issues the Qdrant delete, which is acknowledged even
+   * for IDs that don't exist in the collection.
+   *
+   * @param {string} id
+   * @returns {Promise<boolean>}  true if found+removed in either store, false otherwise
+   */
+  async delete(id) {
+    // Always clean the in-memory fallback regardless of Qdrant configuration.
+    // A record may have been written there because no embedding was available.
+    const idx = vectorMemories.findIndex((m) => m.id === id);
+    const removedLocally = idx !== -1;
+    if (removedLocally) {
+      vectorMemories.splice(idx, 1);
+    }
+
+    if (isQdrantConfigured()) {
+      // Qdrant always acknowledges — returns true even for non-existent IDs.
+      await deleteQdrantPoint(id);
+      return true;
+    }
+
+    return removedLocally;
   },
 
   // ── updatePayloadMetadata ──────────────────────────────────────────────────

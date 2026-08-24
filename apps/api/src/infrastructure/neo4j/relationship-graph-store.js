@@ -733,6 +733,56 @@ export async function updateMemoryLifecycleState(id, lifecycleState, metadata) {
   }
 }
 
+/**
+ * Delete a Memory node and all its direct relationships from Neo4j.
+ *
+ * The DETACH DELETE clause removes the node together with every relationship
+ * it participates in, preventing dangling edges.  Shared nodes that the
+ * Memory pointed to (Domain, Keyword, Tag, Entity, etc.) are intentionally
+ * left intact — they may still be referenced by other Memory nodes.
+ *
+ * When Neo4j is not configured the function returns `false` (skip, not error).
+ * When the node does not exist the function returns `false` (idempotent).
+ *
+ * @param {string} memoryId
+ * @returns {Promise<boolean>}  true = node existed and was deleted; false = not found / Neo4j disabled
+ */
+export async function deleteMemory(memoryId) {
+  try {
+    if (!(await ensureNeo4jReady())) {
+      return false;
+    }
+
+    const session = getDriver().session({
+      database: process.env.NEO4J_DATABASE || "neo4j"
+    });
+
+    try {
+      const result = await session.executeWrite((tx) =>
+        tx.run(
+          `
+          match (m:Memory {id: $memoryId})
+          detach delete m
+          return count(m) as deleted
+          `,
+          { memoryId }
+        )
+      );
+
+      const count = result.records[0]?.get("deleted");
+      // neo4j-driver returns integers as neo4j.Integer objects
+      const deletedCount = typeof count?.toNumber === "function" ? count.toNumber() : Number(count ?? 0);
+      return deletedCount > 0;
+    } finally {
+      await session.close();
+    }
+  } catch (error) {
+    graphLog.warn({ err: error, memoryId }, "Neo4j deleteMemory skipped");
+    // Rethrow so the cascade can record this as a partial failure
+    throw error;
+  }
+}
+
 export async function getNeo4jHealth() {
   if (!isNeo4jEnabled()) {
     return {

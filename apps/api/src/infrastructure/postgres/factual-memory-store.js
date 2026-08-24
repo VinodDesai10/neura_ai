@@ -249,6 +249,29 @@ export const factualMemoryStore = {
       .map((e) => e.memory);
   },
 
+  // ── delete ────────────────────────────────────────────────────────────────
+  /**
+   * Hard-delete a factual memory row by ID.
+   *
+   * @param {string} id
+   * @returns {Promise<boolean>}  true if a row was deleted, false if not found
+   */
+  async delete(id) {
+    if (await ensurePostgresReady()) {
+      const sql = getPostgresClient();
+      const result = await sql`
+        delete from factual_memories where id = ${id}
+      `;
+      return result.count > 0;
+    }
+
+    // In-memory fallback
+    const idx = factualMemories.findIndex((m) => m.id === id);
+    if (idx === -1) return false;
+    factualMemories.splice(idx, 1);
+    return true;
+  },
+
   // ── updateLifecycleState ───────────────────────────────────────────────────
   /**
    * Update only the lifecycle-related metadata fields on a factual memory row.

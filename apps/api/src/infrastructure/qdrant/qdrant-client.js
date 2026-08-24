@@ -137,6 +137,32 @@ export async function upsertQdrantPoint(point) {
 }
 
 /**
+ * Delete a single point by ID from the Qdrant collection.
+ *
+ * Returns `true` on success (Qdrant returns 200 with status "acknowledged").
+ * Returns `false` when the collection does not exist yet (nothing to delete).
+ * Throws on any other error so the caller can handle it explicitly.
+ *
+ * @param {string} pointId  - UUID string of the Qdrant point to remove
+ * @returns {Promise<boolean>}
+ */
+export async function deleteQdrantPoint(pointId) {
+  try {
+    await callQdrant(`/collections/${getCollectionName()}/points/delete`, {
+      method: "POST",
+      body: JSON.stringify({ points: [pointId] })
+    });
+    return true;
+  } catch (error) {
+    if (isMissingCollectionError(error)) {
+      // Collection doesn't exist yet — treat as "not found", not an error
+      return false;
+    }
+    throw error;
+  }
+}
+
+/**
  * Perform a partial payload update on a single point.
  *
  * Uses the Qdrant PATCH /points/payload endpoint which merges the supplied
