@@ -25,8 +25,6 @@ import {
 } from "@neura/core";
 import { isSmallTalk } from "@neura/shared";
 import { rawEventVault }       from "../infrastructure/raw-event-vault.js";
-import { factualMemoryStore }  from "../infrastructure/factual-memory-store.js";
-import { vectorMemoryStore }   from "../infrastructure/vector-memory-store.js";
 import { workingMemoryStore }  from "../infrastructure/working-memory-store.js";
 import { redisRuntimeStore }   from "../infrastructure/redis-runtime-store.js";
 import { openAIAdapter }       from "./openai-adapter.js";
@@ -135,16 +133,19 @@ async function retrieveWorkingSet({ sessionId, userId, message, seedMemories = [
   }
 
   // ── Full retrieval ───────────────────────────────────────────────────────
+  // H-1 fix: hybridRetrieval.getRelevantMemories() is the single retrieval
+  // path.  It fans out to Postgres (keyword) and Qdrant (vector) internally,
+  // handles embedding, and enriches with Neo4j graph scores — so Postgres and
+  // Qdrant are each queried exactly once per turn.  The previous direct calls
+  // to factualMemoryStore.findRelevant() and vectorMemoryStore.findRelevant()
+  // (and the standalone openAIAdapter.embedText()) have been removed to
+  // eliminate the duplicate queries.
   const retrievalStart = process.hrtime.bigint();
 
-  const queryEmbedding = await openAIAdapter.embedText(message);
-
-  const [recentFacts, similarMemories, rawRecentContext, hybridMemories] = await Promise.all([
-    factualMemoryStore.findRelevant(message, sessionId),
-    vectorMemoryStore.findRelevant({ query: message, queryEmbedding, sessionId, userId }),
+  const [rawRecentContext, hybridMemories] = await Promise.all([
     rawEventVault.findRecentBySession(sessionId),
-    // Hybrid retrieval — adds graph-boosted candidates and access-frequency
-    // signals.  Failures are silenced internally; an empty array is returned
+    // Hybrid retrieval — queries Postgres + Qdrant + Neo4j once.
+    // Failures are silenced internally; an empty array is returned
     // when all backends are unavailable so the turn proceeds normally.
     hybridRetrieval.getRelevantMemories(message, userId, sessionId).catch(() => [])
   ]);
@@ -152,29 +153,29 @@ async function retrieveWorkingSet({ sessionId, userId, message, seedMemories = [
   const recentContext    = recentTurns.length ? recentTurns : rawRecentContext;
   const previousMemories = previousWorkingMemory?.activeMemories || [];
 
-  // Build scored-entries lookup from store-level results (they carry _retrieval)
-  // Hybrid memories may carry a _hybrid envelope — normalise them so they're
-  // compatible with the existing deduplicateAndRerank() pipeline.
+  // Normalise hybrid memories: translate the _hybrid envelope into the
+  // _retrieval shape expected by deduplicateAndRerank().
   const normaliseHybrid = (m) => {
     if (!m._hybrid || m._retrieval) return m;
     return {
       ...m,
       _retrieval: {
-        vectorScore:  m._hybrid.vectorScore  ?? 0,
-        lexicalScore: (m._hybrid.keywordScore ?? 0) * 5,  // undo normalisation
+        vectorScore:     m._hybrid.vectorScore    ?? 0,
+        lexicalScore:    (m._hybrid.keywordScore  ?? 0) * 5,  // undo normalisation
         importanceScore: m._hybrid.importanceScore ?? 0,
-        recencyScore: m._hybrid.recencyScore  ?? 0,
-        score:        m._hybrid.finalScore    ?? 0,
-        source:       (m._hybrid.sources || ["hybrid"]).join("+")
+        recencyScore:    m._hybrid.recencyScore    ?? 0,
+        score:           m._hybrid.finalScore      ?? 0,
+        source:          (m._hybrid.sources || ["hybrid"]).join("+")
       }
     };
   };
 
+  // hybridMemories already contains everything from both stores (Postgres
+  // keyword results + Qdrant vector results + graph neighbours).  The separate
+  // recentFacts / similarMemories arrays are no longer fetched individually.
   const allCandidates = [
     ...relevantSeedMemories,
     ...previousMemories,
-    ...recentFacts,
-    ...similarMemories,
     ...hybridMemories.map(normaliseHybrid)
   ];
 
