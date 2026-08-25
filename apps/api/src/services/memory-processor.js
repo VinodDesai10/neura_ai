@@ -41,11 +41,6 @@ import { logger }                     from "../lib/logger.js";
 
 const processorLog = logger.child({ component: "memory-processor" });
 
-// ─── Module-level embedding cache ────────────────────────────────────────────
-// Avoids re-embedding the same text within a single worker process lifetime.
-
-const embeddingCache = new Map();
-
 // ─── Deduplication helper ─────────────────────────────────────────────────────
 
 /**
@@ -127,17 +122,11 @@ async function processEventJob(event) {
     }
 
     // ── Episodic / semantic: embed first, then dedup ──────────────────────────
-    const embeddingKey = `${candidate.memoryType}:${candidate.summary}`;
-    if (embeddingCache.has(embeddingKey)) {
-      candidate.embedding = embeddingCache.get(embeddingKey);
-    } else {
-      candidate.embedding = await openAIAdapter.embedText(
-        `${candidate.memoryType}: ${candidate.summary}`
-      );
-      if (candidate.embedding) {
-        embeddingCache.set(embeddingKey, candidate.embedding);
-      }
-    }
+    // Caching is handled by openAIAdapter.embedText via redisRuntimeStore
+    // (TTL-backed, no unbounded in-process Map needed here).
+    candidate.embedding = await openAIAdapter.embedText(
+      `${candidate.memoryType}: ${candidate.summary}`
+    );
 
     // Near-duplicate check (embedding cosine similarity)
     const dupCheck = isSimilarMemory(candidate, existing);
