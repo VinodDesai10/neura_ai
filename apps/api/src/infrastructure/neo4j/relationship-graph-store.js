@@ -152,6 +152,7 @@ async function writeMemoryToGraph(tx, memory) {
   const keywords = pickGraphKeywords(memory.metadata.keywords);
   const entities = pickGraphEntities(memory.metadata.entities);
 
+  // ── Query 1: core MERGE (Session + RawEvent + Memory + structural rels) ──
   await tx.run(
     `
     merge (s:Session {id: $sessionId})
@@ -199,6 +200,7 @@ async function writeMemoryToGraph(tx, memory) {
     }
   );
 
+  // ── Query 2 (conditional): primary domain ─────────────────────────────────
   if (memory.metadata.domain) {
     await tx.run(
       `
@@ -211,6 +213,7 @@ async function writeMemoryToGraph(tx, memory) {
     );
   }
 
+  // ── Query 3: MemoryType ────────────────────────────────────────────────────
   await tx.run(
     `
     match (m:Memory {id: $memoryId})
@@ -220,6 +223,7 @@ async function writeMemoryToGraph(tx, memory) {
     { memoryId: memory.id, memoryType: memory.memoryType }
   );
 
+  // ── Query 4: ImportanceLevel ───────────────────────────────────────────────
   const importanceLevel = getImportanceLevel(memory.metadata.importance);
   await tx.run(
     `
@@ -231,6 +235,7 @@ async function writeMemoryToGraph(tx, memory) {
     { memoryId: memory.id, level: importanceLevel.name, minScore: importanceLevel.min, maxScore: importanceLevel.max }
   );
 
+  // ── Query 5 (conditional): Sentiment ──────────────────────────────────────
   if (memory.metadata.sentiment) {
     await tx.run(
       `
@@ -242,51 +247,66 @@ async function writeMemoryToGraph(tx, memory) {
     );
   }
 
-  for (const tag of memory.metadata.tags || []) {
+  // ── Query 6 (batch): Tags — one UNWIND instead of one query per tag ────────
+  // Skipped entirely when the array is empty to avoid an unnecessary round-trip.
+  const tags = memory.metadata.tags || [];
+  if (tags.length > 0) {
     await tx.run(
       `
       match (m:Memory {id: $memoryId})
-      merge (t:Tag {name: $tag})
+      unwind $tags as tag
+      merge (t:Tag {name: tag})
       merge (m)-[:TAGGED_WITH]->(t)
       `,
-      { memoryId: memory.id, tag }
+      { memoryId: memory.id, tags }
     );
   }
 
-  for (let i = 0; i < keywords.length; i++) {
+  // ── Query 7 (batch): Keywords — one UNWIND instead of one query per keyword
+  // Each element carries { text, position } so the relationship property is
+  // preserved exactly as before.
+  if (keywords.length > 0) {
+    // Build the array of parameter objects expected by the Cypher UNWIND.
+    const keywordRows = keywords.map((text, position) => ({ text, position }));
     await tx.run(
       `
       match (m:Memory {id: $memoryId})
-      merge (k:Keyword {text: $keyword})
+      unwind $keywords as kw
+      merge (k:Keyword {text: kw.text})
       on create set k.frequency = 1
       on match set k.frequency = k.frequency + 1
       set k.updatedAt = timestamp()
-      merge (m)-[:HAS_KEYWORD {position: $position}]->(k)
+      merge (m)-[:HAS_KEYWORD {position: kw.position}]->(k)
       `,
-      { memoryId: memory.id, keyword: keywords[i], position: i }
+      { memoryId: memory.id, keywords: keywordRows }
     );
   }
 
-  for (const entity of entities) {
+  // ── Query 8 (batch): Entities — one UNWIND instead of one query per entity ─
+  if (entities.length > 0) {
     await tx.run(
       `
       match (m:Memory {id: $memoryId})
-      merge (e:Entity {value: $value, type: $type})
+      unwind $entities as entity
+      merge (e:Entity {value: entity.value, type: entity.type})
       set e.updatedAt = timestamp(), e.occurrences = coalesce(e.occurrences, 0) + 1
       merge (m)-[:MENTIONS]->(e)
       `,
-      { memoryId: memory.id, value: entity.value, type: entity.type }
+      { memoryId: memory.id, entities }
     );
   }
 
-  for (const altDomain of memory.metadata.alternateDomains || []) {
+  // ── Query 9 (batch): Alternate domains — one UNWIND instead of one per domain
+  const alternateDomains = memory.metadata.alternateDomains || [];
+  if (alternateDomains.length > 0) {
     await tx.run(
       `
       match (m:Memory {id: $memoryId})
-      merge (d:Domain {name: $domain})
+      unwind $domains as domain
+      merge (d:Domain {name: domain})
       merge (m)-[:COULD_BE_ABOUT {confidence: $altConfidence}]->(d)
       `,
-      { memoryId: memory.id, domain: altDomain, altConfidence: 0.3 }
+      { memoryId: memory.id, domains: alternateDomains, altConfidence: 0.3 }
     );
   }
 }
