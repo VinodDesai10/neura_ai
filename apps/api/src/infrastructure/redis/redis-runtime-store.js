@@ -271,6 +271,64 @@ export const redisRuntimeStore = {
     }
   },
 
+  /**
+   * Acquire a per-session lock for the memory-processing dedup/write section.
+   *
+   * Uses a distinct key suffix (:proc-lock) so it never conflicts with the
+   * chat-turn serialisation lock (:lock) held by memory-orchestrator.
+   *
+   * Atomic SET NX EX in Redis; local Map with TTL in the fallback path.
+   *
+   * @param {string} sessionId
+   * @param {number} [ttlSeconds=30]  – 30 s covers worst-case embedding + store latency
+   * @returns {Promise<string|null>}  unique token, or null when lock is held
+   */
+  async acquireMemoryProcessingLock(sessionId, ttlSeconds = 30) {
+    const key   = getSessionKey(sessionId, "proc-lock");
+    const token = randomUUID();
+    const redis = await getRedisClient();
+
+    if (redis) {
+      const result = await redis.set(key, token, { NX: true, EX: ttlSeconds });
+      return result === "OK" ? token : null;
+    }
+
+    pruneExpiredMap(localLocks);
+
+    if (localLocks.has(key)) {
+      return null;
+    }
+
+    localLocks.set(key, { value: token, expiresAt: now() + ttlSeconds * 1000 });
+    return token;
+  },
+
+  /**
+   * Release the memory-processing lock.  Only deletes the key when the
+   * stored token matches, so an expired-and-re-acquired lock is never
+   * released by a stale holder.
+   *
+   * @param {string} sessionId
+   * @param {string} token
+   * @returns {Promise<void>}
+   */
+  async releaseMemoryProcessingLock(sessionId, token) {
+    const key   = getSessionKey(sessionId, "proc-lock");
+    const redis = await getRedisClient();
+
+    if (redis) {
+      const currentToken = await redis.get(key);
+      if (currentToken === token) {
+        await redis.del(key);
+      }
+      return;
+    }
+
+    if (localLocks.get(key)?.value === token) {
+      localLocks.delete(key);
+    }
+  },
+
   async checkRateLimit({ scope, id, limit = 30, windowSeconds = 60 }) {
     const key = `${getPrefix()}:rate:${scope}:${id}`;
     const redis = await getRedisClient();

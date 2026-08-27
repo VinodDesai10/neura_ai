@@ -38,6 +38,9 @@ import { isSimilarMemory }            from "./deduplication-service.js";
 import { generateSummaryMemory }      from "./summary-memory.js";
 import { persistMemoryGraph }         from "./graphPipeline.js";
 import { logger }                     from "../lib/logger.js";
+// H-4: per-session distributed lock — prevents concurrent workers from both
+// passing the dedup check before either write completes.
+import { redisRuntimeStore }          from "../infrastructure/redis-runtime-store.js";
 
 const processorLog = logger.child({ component: "memory-processor" });
 
@@ -72,44 +75,107 @@ async function getExistingMemoriesForDedup(sessionId) {
 /**
  * Extract memory candidates from a raw event, deduplicate, embed, and store.
  *
+ * H-4: the entire read-dedup-write section is serialised behind a per-session
+ * distributed lock (Redis SET NX EX; local-Map fallback) so concurrent workers
+ * processing jobs for the same session cannot both pass deduplication before
+ * either write completes.  Different sessions are never blocked by each other.
+ *
  * @param {object} event
  * @returns {Promise<Array>}  list of stored memory objects
  */
 async function processEventJob(event) {
-  const candidates   = extractMemoryCandidates(event);
-  const stored       = [];
-  const toLink       = [];
+  const candidates = extractMemoryCandidates(event);
 
-  // Load existing memories once per event (not per candidate) to keep N+1 queries away
-  const existing = await getExistingMemoriesForDedup(event.sessionId);
+  // ── Acquire per-session memory-processing lock (H-4) ─────────────────────
+  // TTL of 30 s covers the worst-case latency of embedding + multi-store
+  // writes.  The lock is keyed on :proc-lock (distinct from the orchestrator's
+  // :lock) so chat-turn serialisation is never affected.
+  //
+  // On lock failure we log a warning and return an empty list — the job will
+  // be retried by the reliability wrapper, by which time the holding worker
+  // will have finished and released the lock.
+  const procLockToken = await redisRuntimeStore.acquireMemoryProcessingLock(event.sessionId);
+  if (!procLockToken) {
+    processorLog.warn(
+      { sessionId: event.sessionId },
+      "memory.proc-lock.contention – skipping; job will be retried"
+    );
+    const err = new Error("memory-processing lock contended — will retry");
+    // Mark as transient so the reliability wrapper retries rather than DLQ-ing
+    err.code = "ECONNRESET"; // any transient code works; picked for classifier compat
+    throw err;
+  }
 
-  for (const baseCandidate of candidates) {
-    const candidate = {
-      id:            crypto.randomUUID(),
-      sourceEventId: event.id,
-      sessionId:     event.sessionId,
-      userId:        event.userId || null,
-      memoryType:    baseCandidate.memoryType,
-      content:       baseCandidate.content,
-      summary:       baseCandidate.summary,
-      metadata:      baseCandidate.metadata,
-      fingerprint:   computeMemoryFingerprint(baseCandidate.content),
-      embedding:     null
-    };
+  const stored = [];
+  const toLink = [];
 
-    // ── Factual memories: fingerprint dedup is handled by Postgres on-conflict ─
-    if (candidate.memoryType === "factual") {
-      // Pre-check fingerprint to avoid a DB round-trip for exact duplicates
+  try {
+    // Load existing memories once per event (not per candidate) to keep N+1 queries away.
+    // This read happens INSIDE the lock so no concurrent worker can overlap it
+    // with a write for the same session.
+    const existing = await getExistingMemoriesForDedup(event.sessionId);
+
+    for (const baseCandidate of candidates) {
+      const candidate = {
+        id:            crypto.randomUUID(),
+        sourceEventId: event.id,
+        sessionId:     event.sessionId,
+        userId:        event.userId || null,
+        memoryType:    baseCandidate.memoryType,
+        content:       baseCandidate.content,
+        summary:       baseCandidate.summary,
+        metadata:      baseCandidate.metadata,
+        fingerprint:   computeMemoryFingerprint(baseCandidate.content),
+        embedding:     null
+      };
+
+      // ── Factual memories: fingerprint dedup is handled by Postgres on-conflict ─
+      if (candidate.memoryType === "factual") {
+        // Pre-check fingerprint to avoid a DB round-trip for exact duplicates
+        const dupCheck = isSimilarMemory(candidate, existing);
+        if (dupCheck.isDuplicate && dupCheck.reason === "fingerprint") {
+          processorLog.debug(
+            { sessionId: event.sessionId, fingerprint: candidate.fingerprint, reason: "fingerprint" },
+            "memory.deduplicated"
+          );
+          continue;
+        }
+
+        const storedMemory = await factualMemoryStore.upsert(candidate);
+        // Route through the tier system — non-blocking; failure must not break storage
+        storageRouter.saveMemory(storedMemory).catch((err) =>
+          processorLog.warn({ err, id: storedMemory?.id }, "tier-router.save.failed")
+        );
+        // Async graph extraction — must never block or fail memory storage
+        persistMemoryGraph(storedMemory).catch(() => {});
+        toLink.push(storedMemory);
+        stored.push(storedMemory);
+        continue;
+      }
+
+      // ── Episodic / semantic: embed first, then dedup ──────────────────────
+      // Caching is handled by openAIAdapter.embedText via redisRuntimeStore
+      // (TTL-backed, no unbounded in-process Map needed here).
+      candidate.embedding = await openAIAdapter.embedText(
+        `${candidate.memoryType}: ${candidate.summary}`
+      );
+
+      // Near-duplicate check (embedding cosine similarity)
       const dupCheck = isSimilarMemory(candidate, existing);
-      if (dupCheck.isDuplicate && dupCheck.reason === "fingerprint") {
+      if (dupCheck.isDuplicate) {
         processorLog.debug(
-          { sessionId: event.sessionId, fingerprint: candidate.fingerprint, reason: "fingerprint" },
+          {
+            sessionId:  event.sessionId,
+            reason:     dupCheck.reason,
+            similarity: dupCheck.similarity,
+            existingId: dupCheck.existingId
+          },
           "memory.deduplicated"
         );
         continue;
       }
 
-      const storedMemory = await factualMemoryStore.upsert(candidate);
+      const storedMemory = await vectorMemoryStore.upsert(candidate);
       // Route through the tier system — non-blocking; failure must not break storage
       storageRouter.saveMemory(storedMemory).catch((err) =>
         processorLog.warn({ err, id: storedMemory?.id }, "tier-router.save.failed")
@@ -118,40 +184,11 @@ async function processEventJob(event) {
       persistMemoryGraph(storedMemory).catch(() => {});
       toLink.push(storedMemory);
       stored.push(storedMemory);
-      continue;
     }
-
-    // ── Episodic / semantic: embed first, then dedup ──────────────────────────
-    // Caching is handled by openAIAdapter.embedText via redisRuntimeStore
-    // (TTL-backed, no unbounded in-process Map needed here).
-    candidate.embedding = await openAIAdapter.embedText(
-      `${candidate.memoryType}: ${candidate.summary}`
-    );
-
-    // Near-duplicate check (embedding cosine similarity)
-    const dupCheck = isSimilarMemory(candidate, existing);
-    if (dupCheck.isDuplicate) {
-      processorLog.debug(
-        {
-          sessionId:  event.sessionId,
-          reason:     dupCheck.reason,
-          similarity: dupCheck.similarity,
-          existingId: dupCheck.existingId
-        },
-        "memory.deduplicated"
-      );
-      continue;
-    }
-
-    const storedMemory = await vectorMemoryStore.upsert(candidate);
-    // Route through the tier system — non-blocking; failure must not break storage
-    storageRouter.saveMemory(storedMemory).catch((err) =>
-      processorLog.warn({ err, id: storedMemory?.id }, "tier-router.save.failed")
-    );
-    // Async graph extraction — must never block or fail memory storage
-    persistMemoryGraph(storedMemory).catch(() => {});
-    toLink.push(storedMemory);
-    stored.push(storedMemory);
+  } finally {
+    // Always release the lock — even if an error aborted the loop — so the
+    // next job for this session is not locked out indefinitely.
+    await redisRuntimeStore.releaseMemoryProcessingLock(event.sessionId, procLockToken);
   }
 
   if (toLink.length > 0) {
