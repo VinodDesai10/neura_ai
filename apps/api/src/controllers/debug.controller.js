@@ -41,6 +41,14 @@ export const handleMetadataPreview = withErrorHandler(
   "Metadata preview failed",
   async (req, res) => {
     const body = await readJsonBody(req);
+
+    if (body.message !== undefined && typeof body.message !== "string") {
+      return sendJson(res, 400, {
+        error:   "Validation error",
+        details: "message must be a string"
+      });
+    }
+
     const event = {
       id:        crypto.randomUUID(),
       sessionId: body.sessionId || "metadata-preview",

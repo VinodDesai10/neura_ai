@@ -22,7 +22,8 @@ export function redisRoutes(method, pathname, req, res) {
     return true;
   }
 
-  if (method === "GET" && pathname === "/api/redis/cleanup") {
+  // Bug fix: was GET — changed to POST so the controller can receive a JSON body with `prefix`
+  if (method === "POST" && pathname === "/api/redis/cleanup") {
     handleRedisCleanup(req, res);
     return true;
   }

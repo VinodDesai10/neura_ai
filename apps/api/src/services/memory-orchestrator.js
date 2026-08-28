@@ -14,19 +14,26 @@
  *   - userId threaded through namespace to all store calls
  *   - shouldSummarise() trigger wired into handleChatTurn
  *   - Small-talk detection centralised via @neura/shared isSmallTalk
+ *   - Bug fix: factualMemoryStore and vectorMemoryStore now imported (were missing → ReferenceError in getDebugState)
+ *   - Bug fix: consolidationStore now imported from ../infrastructure/consolidation-store.js
+ *              (Postgres-backed) instead of the @neura/core in-memory singleton
  */
 
 import {
   buildContextPrompt,
   computeMemoryFingerprint,
   extractMemoryCandidates,
-  enrichWithConsolidations,
-  consolidationStore
+  enrichWithConsolidations
 } from "@neura/core";
 import { isSmallTalk } from "@neura/shared";
 import { rawEventVault }       from "../infrastructure/raw-event-vault.js";
 import { workingMemoryStore }  from "../infrastructure/working-memory-store.js";
 import { redisRuntimeStore }   from "../infrastructure/redis-runtime-store.js";
+// Bug fix: use the Postgres-backed consolidation store (not the @neura/core in-memory singleton)
+import { consolidationStore }  from "../infrastructure/consolidation-store.js";
+// Bug fix: import stores needed by getDebugState() — were missing, causing ReferenceError at runtime
+import { factualMemoryStore }  from "../infrastructure/factual-memory-store.js";
+import { vectorMemoryStore }   from "../infrastructure/vector-memory-store.js";
 import { openAIAdapter }       from "./openai-adapter.js";
 import { deduplicateAndRerank } from "./retrieval-scorer.js";
 import { hybridRetrieval } from "./hybrid-retrieval.js";

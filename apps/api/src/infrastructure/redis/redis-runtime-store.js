@@ -431,6 +431,27 @@ export const redisRuntimeStore = {
     localLists.delete(key);
   },
 
+  /**
+   * Delete all persisted state for a session: state key and recent-turns list.
+   * Used by the debug reset endpoint.
+   *
+   * @param {string} sessionId
+   * @returns {Promise<void>}
+   */
+  async clearSessionState(sessionId) {
+    const stateKey = getSessionKey(sessionId, "state");
+    const turnsKey = getSessionKey(sessionId, "turns");
+    const redis = await getRedisClient();
+
+    if (redis) {
+      await redis.del(stateKey, turnsKey);
+      return;
+    }
+
+    localJsonStore.delete(stateKey);
+    localLists.delete(turnsKey);
+  },
+
   async markMemoryHits(memories) {
     await Promise.all(
       memories.map(async (memory) => {

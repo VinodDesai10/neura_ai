@@ -20,6 +20,23 @@ import { checkChatRateLimit } from "../middleware/rate-limit.js";
  * }>}
  */
 export async function runChatTurn(req, body) {
+  // Validate required fields before hitting the rate limiter or orchestrator
+  if (body.message !== undefined && typeof body.message !== "string") {
+    return {
+      ok: false,
+      statusCode: 400,
+      payload: { error: "Validation error", details: "message must be a string" }
+    };
+  }
+
+  if (body.sessionId !== undefined && typeof body.sessionId !== "string") {
+    return {
+      ok: false,
+      statusCode: 400,
+      payload: { error: "Validation error", details: "sessionId must be a string" }
+    };
+  }
+
   const rateLimit = await checkChatRateLimit(req, body);
 
   if (!rateLimit.ok) {
