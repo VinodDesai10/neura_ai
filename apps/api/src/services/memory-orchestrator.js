@@ -21,6 +21,7 @@
 
 import {
   buildContextPrompt,
+  buildContextPromptParts,
   computeMemoryFingerprint,
   extractMemoryCandidates,
   enrichWithConsolidations
@@ -35,6 +36,7 @@ import { consolidationStore }  from "../infrastructure/consolidation-store.js";
 import { factualMemoryStore }  from "../infrastructure/factual-memory-store.js";
 import { vectorMemoryStore }   from "../infrastructure/vector-memory-store.js";
 import { openAIAdapter }       from "./openai-adapter.js";
+import { buildContextWindow }  from "./context-window.js";
 import { deduplicateAndRerank } from "./retrieval-scorer.js";
 import { hybridRetrieval } from "./hybrid-retrieval.js";
 import { shouldSummarise }      from "./summary-memory.js";
@@ -287,12 +289,24 @@ export const memoryOrchestrator = {
       });
 
       // ── Generate response ───────────────────────────────────────────────
+      const promptParts = buildContextPromptParts({
+        userMessage:    message,
+        activeMemories: workingMemory.activeMemories,
+        recentContext:  workingMemory.recentContext
+      });
       const prompt = buildContextPrompt({
         userMessage:    message,
         activeMemories: workingMemory.activeMemories,
         recentContext:  workingMemory.recentContext
       });
-      const reply = await openAIAdapter.generateResponse(prompt);
+      const generation = await openAIAdapter.generateResponseWithUsage(prompt);
+      const reply = generation.text;
+      const contextWindow = buildContextWindow({
+        promptParts,
+        activeMemories: workingMemory.activeMemories,
+        recentContext:  workingMemory.recentContext,
+        generation
+      });
 
       // ── Store assistant event ───────────────────────────────────────────
       const assistantEvent = await rawEventVault.append({
@@ -336,6 +350,7 @@ export const memoryOrchestrator = {
         sessionId,
         reply,
         workingMemory,
+        contextWindow,
         sessionState: await redisRuntimeStore.getSessionState(sessionId)
       };
     } finally {

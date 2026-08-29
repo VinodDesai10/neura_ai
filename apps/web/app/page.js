@@ -39,6 +39,12 @@ function createId() {
   return `id-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function formatTokenCount(value, estimated = false) {
+  const count = Number(value);
+  const safeCount = Number.isFinite(count) ? count : 0;
+  return `${estimated ? "~" : ""}${safeCount.toLocaleString()} tok`;
+}
+
 // ─── Markdown renderer (no deps) ─────────────────────────────────────────────
 
 function renderMarkdown(text) {
@@ -204,11 +210,11 @@ function saveMessages(sessionId, messages) {
 }
 
 function loadWorkingMemory(sessionId) {
-  if (typeof window === "undefined") return { activeMemories: [], recentContext: [] };
+  if (typeof window === "undefined") return { activeMemories: [], recentContext: [], contextWindow: null };
   try {
     const stored = localStorage.getItem(`neura-working-memory-${sessionId}`);
-    return stored ? JSON.parse(stored) : { activeMemories: [], recentContext: [] };
-  } catch { return { activeMemories: [], recentContext: [] }; }
+    return stored ? JSON.parse(stored) : { activeMemories: [], recentContext: [], contextWindow: null };
+  } catch { return { activeMemories: [], recentContext: [], contextWindow: null }; }
 }
 
 function saveWorkingMemory(sessionId, memory) {
@@ -270,7 +276,7 @@ export default function HomePage() {
 
     setSessionId(sid);
     setMessages(msgs);
-    setMemoryState(wm);
+    setMemoryState({ activeMemories: [], recentContext: [], contextWindow: null, ...wm });
     setIsHydrated(true);
     refreshStorageHealth();
 
@@ -338,7 +344,7 @@ export default function HomePage() {
     setActiveSessionId(newId);
     setSessionId(newId);
     setMessages([WELCOME_MESSAGE]);
-    setMemoryState({ activeMemories: [], recentContext: [] });
+    setMemoryState({ activeMemories: [], recentContext: [], contextWindow: null });
     setDraft("");
   }
 
@@ -347,7 +353,7 @@ export default function HomePage() {
     setActiveSessionId(sid);
     setSessionId(sid);
     setMessages(loadMessages(sid));
-    setMemoryState(loadWorkingMemory(sid));
+    setMemoryState({ activeMemories: [], recentContext: [], contextWindow: null, ...loadWorkingMemory(sid) });
     setDraft("");
   }
 
@@ -402,7 +408,12 @@ export default function HomePage() {
       const wm = payload.workingMemory
         || await fetchWorkingMemorySnapshot(sessionId)
         || { activeMemories: [], recentContext: [] };
-      setMemoryState(wm);
+      setMemoryState({
+        activeMemories: [],
+        recentContext: [],
+        ...wm,
+        contextWindow: payload.contextWindow || null
+      });
 
       setSessions(registerSession(sessionId, null));
       refreshStorageHealth();
@@ -678,6 +689,77 @@ export default function HomePage() {
                   </div>
                 )}
               </div>
+            </div>
+
+            <div className="panel context-window-panel" style={{ marginTop: "12px" }}>
+              <div className="panel-title">
+                Context Window
+                <span className="context-window-last-turn">Last turn</span>
+              </div>
+
+              {memoryState.contextWindow ? (
+                <div className="context-window-content">
+                  <div className="context-window-provider" title={memoryState.contextWindow.model || "Local fallback"}>
+                    <span className={`dot ${memoryState.contextWindow.source === "provider" ? "dot-ok" : "dot-pending"}`} />
+                    <span>{memoryState.contextWindow.provider || "Provider"}</span>
+                    <span className="context-window-model">
+                      {memoryState.contextWindow.model || "Local fallback"}
+                    </span>
+                  </div>
+
+                  <div className="context-window-taken">
+                    <span className="context-window-kicker">Content taken</span>
+                    <strong>
+                      {memoryState.contextWindow.contentTaken?.workingMemoryItems ?? 0} memories · {memoryState.contextWindow.contentTaken?.recentContextTurns ?? 0} turns
+                    </strong>
+                  </div>
+
+                  <div className="context-window-group">
+                    <div className="context-window-total">
+                      <span>Input</span>
+                      <strong>
+                        {formatTokenCount(
+                          memoryState.contextWindow.input?.totalTokens,
+                          memoryState.contextWindow.input?.totalIsEstimated
+                        )}
+                      </strong>
+                    </div>
+                    <div className="context-window-row">
+                      <span>Normal chat context</span>
+                      <span>{formatTokenCount(memoryState.contextWindow.input?.breakdown?.normalChatContext, true)}</span>
+                    </div>
+                    <div className="context-window-row">
+                      <span>Working memory</span>
+                      <span>{formatTokenCount(memoryState.contextWindow.input?.breakdown?.workingMemory, true)}</span>
+                    </div>
+                    <div className="context-window-row">
+                      <span>Current message</span>
+                      <span>{formatTokenCount(memoryState.contextWindow.input?.breakdown?.currentMessage, true)}</span>
+                    </div>
+                    <div className="context-window-row">
+                      <span>Instructions</span>
+                      <span>{formatTokenCount(memoryState.contextWindow.input?.breakdown?.systemInstructions, true)}</span>
+                    </div>
+                  </div>
+
+                  <div className="context-window-group">
+                    <div className="context-window-total">
+                      <span>Output</span>
+                      <strong>
+                        {formatTokenCount(
+                          memoryState.contextWindow.output?.totalTokens,
+                          memoryState.contextWindow.output?.totalIsEstimated
+                        )}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="empty-state context-window-empty">
+                  <span style={{ fontSize: "20px" }}>⌁</span>
+                  <span>Send a message to measure the turn</span>
+                </div>
+              )}
             </div>
 
             <div className="panel" style={{ marginTop: "12px" }}>
