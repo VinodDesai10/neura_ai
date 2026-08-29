@@ -3,6 +3,9 @@ import { logger } from "../lib/logger.js";
 
 const adapterLog = logger.child({ component: "openai-adapter" });
 
+export const AI_SYSTEM_PROMPT =
+  "You are AiNeura, a memory-centric assistant. Answer naturally using the surfaced context. If the context is insufficient, say what you do and do not know.";
+
 function buildFallbackReply(prompt) {
   const userLine = prompt
     .split("\n")
@@ -11,8 +14,38 @@ function buildFallbackReply(prompt) {
   return [
     "AiNeura demo response:",
     userLine ? userLine.replace("User message:", "").trim() : "I received your message.",
-    "This is currently running with a local fallback responder until the OpenAI integration is wired."
+    "This is currently running with a local fallback responder until an AI provider is configured."
   ].join(" ");
+}
+
+function normalizeTokenCount(value) {
+  const count = Number(value);
+  return Number.isFinite(count) && count >= 0 ? count : null;
+}
+
+function readUsage(payload) {
+  const usage = payload?.usage || {};
+  const inputTokens = normalizeTokenCount(usage.prompt_tokens ?? usage.input_tokens);
+  const outputTokens = normalizeTokenCount(usage.completion_tokens ?? usage.output_tokens);
+  const totalTokens = normalizeTokenCount(usage.total_tokens);
+
+  if (inputTokens === null && outputTokens === null && totalTokens === null) {
+    return null;
+  }
+
+  return { inputTokens, outputTokens, totalTokens };
+}
+
+function getConfiguredProvider() {
+  if (process.env.OPENAI_API_KEY || process.env.OPENAI_BASE_URL) {
+    return "openai-compatible";
+  }
+
+  return "local-fallback";
+}
+
+function getConfiguredChatModel() {
+  return process.env.OPENAI_MODEL || "gpt-4.1-mini";
 }
 
 function extractResponseText(payload) {
@@ -86,19 +119,29 @@ async function callOpenAI(path, body) {
 
 export const openAIAdapter = {
   async generateResponse(prompt) {
+    const result = await this.generateResponseWithUsage(prompt);
+    return result.text;
+  },
+
+  async generateResponseWithUsage(prompt) {
     if (!process.env.OPENAI_API_KEY) {
       if (!process.env.OPENAI_BASE_URL) {
-        return buildFallbackReply(prompt);
+        return {
+          text: buildFallbackReply(prompt),
+          provider: "local-fallback",
+          model: null,
+          usage: null,
+          source: "fallback"
+        };
       }
     }
 
     const payload = await callOpenAI("/v1/chat/completions", {
-      model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
+      model: getConfiguredChatModel(),
       messages: [
         {
           role: "system",
-          content:
-            "You are AiNeura, a memory-centric assistant. Answer naturally using the surfaced context. If the context is insufficient, say what you do and do not know."
+          content: AI_SYSTEM_PROMPT
         },
         {
           role: "user",
@@ -110,7 +153,13 @@ export const openAIAdapter = {
     });
 
     const text = extractChatCompletionText(payload) || extractResponseText(payload);
-    return text || buildFallbackReply(prompt);
+    return {
+      text: text || buildFallbackReply(prompt),
+      provider: getConfiguredProvider(),
+      model: getConfiguredChatModel(),
+      usage: readUsage(payload),
+      source: text ? "provider" : "fallback"
+    };
   },
 
   async embedText(text) {
