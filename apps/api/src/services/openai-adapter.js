@@ -101,6 +101,17 @@ export const openAIAdapter = {
 
     const payload = await callOpenAI("/v1/chat/completions", {
       model: process.env.AI_GATEWAY_MODEL || process.env.OPENAI_MODEL || "gpt-4.1-mini",
+      ...(process.env.AI_GATEWAY_API_KEY
+        ? {
+            providerOptions: {
+              gateway: {
+                models: [
+                  process.env.AI_GATEWAY_FALLBACK_MODEL || "inclusionai/ling-3.0-flash"
+                ]
+              }
+            }
+          }
+        : {}),
       messages: [
         {
           role: "system",
