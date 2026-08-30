@@ -160,5 +160,6 @@ export {
 // ─── Prompts module ───────────────────────────────────────────────────────────
 
 export {
-  buildContextPrompt
+  buildContextPrompt,
+  buildContextPromptParts
 } from "./prompts/index.js";
