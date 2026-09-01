@@ -240,9 +240,150 @@ async function retrieveWorkingSet({ sessionId, userId, message, seedMemories = [
   return workingMemoryStore.read(sessionId);
 }
 
+async function withSessionLock(sessionId, operation) {
+  const lockToken = await redisRuntimeStore.acquireSessionLock(sessionId);
+
+  if (!lockToken) {
+    const error = new Error("Session is already processing a memory operation");
+    error.statusCode = 409;
+    throw error;
+  }
+
+  try {
+    return await operation();
+  } finally {
+    await redisRuntimeStore.releaseSessionLock(sessionId, lockToken);
+  }
+}
+
+async function appendEventAndQueue({ sessionId, userId, role, content }) {
+  const event = await rawEventVault.append({
+    sessionId,
+    userId: userId || null,
+    role,
+    content
+  });
+
+  await redisRuntimeStore.appendRecentTurn(sessionId, {
+    id: event.id,
+    role: event.role,
+    content: event.content,
+    createdAt: event.createdAt
+  });
+
+  await redisRuntimeStore.enqueueMemoryJob(attachJobMetadata({
+    type: "process-event-into-memories",
+    sessionId,
+    userId: userId || null,
+    eventId: event.id,
+    role: event.role,
+    event
+  }));
+
+  return event;
+}
+
+async function syncWorkingMemoryRecentContext(sessionId) {
+  const currentWorkingMemory = await workingMemoryStore.read(sessionId);
+  const recentContext = await redisRuntimeStore.getRecentTurns(sessionId);
+
+  return workingMemoryStore.write(sessionId, {
+    ...currentWorkingMemory,
+    activeMemories: currentWorkingMemory.activeMemories || [],
+    recentContext
+  });
+}
+
 // ─── Orchestrator ─────────────────────────────────────────────────────────────
 
 export const memoryOrchestrator = {
+  /**
+   * Retrieve the context that ChatGPT should use before answering.
+   *
+   * This deliberately does not append a user event or call the LLM. The
+   * ChatGPT MCP connector uses it as the read phase of a memory turn.
+   */
+  async prepareMemoryContext({ sessionId, userId, message }) {
+    return withSessionLock(sessionId, async () => {
+      await redisRuntimeStore.setSessionState(sessionId, inferSessionState(message));
+
+      const workingMemory = await retrieveWorkingSet({
+        sessionId,
+        userId,
+        message,
+        seedMemories: []
+      });
+
+      return {
+        sessionId,
+        workingMemory,
+        sessionState: await redisRuntimeStore.getSessionState(sessionId)
+      };
+    });
+  },
+
+  /**
+   * Persist a complete ChatGPT turn without generating a reply.
+   *
+   * ChatGPT supplies the assistant text after it has used the context from
+   * prepareMemoryContext(). Both sides are written to the same raw event
+   * vault, recent-turn store, and background memory queue as the native chat
+   * path.
+   */
+  async recordMemoryTurn({ sessionId, userId, userMessage, assistantMessage }) {
+    return withSessionLock(sessionId, async () => {
+      await redisRuntimeStore.setSessionState(
+        sessionId,
+        inferSessionState(userMessage)
+      );
+
+      const userEvent = await appendEventAndQueue({
+        sessionId,
+        userId,
+        role: "user",
+        content: userMessage
+      });
+
+      const assistantEvent = await appendEventAndQueue({
+        sessionId,
+        userId,
+        role: "assistant",
+        content: assistantMessage
+      });
+
+      const previousSessionState =
+        await redisRuntimeStore.getSessionState(sessionId) || {};
+      const assistantTurnCount =
+        (Number(previousSessionState.assistantTurnCount) || 0) + 1;
+
+      await redisRuntimeStore.setSessionState(sessionId, {
+        assistantTurnCount
+      });
+
+      let memoryJobsQueued = 2;
+
+      if (shouldSummarise(assistantTurnCount)) {
+        const recentTurns = await redisRuntimeStore.getRecentTurns(sessionId);
+        await redisRuntimeStore.enqueueMemoryJob(attachJobMetadata({
+          type: "summarise-session",
+          sessionId,
+          userId: userId || null,
+          recentTurns
+        }));
+        memoryJobsQueued += 1;
+      }
+
+      return {
+        sessionId,
+        userEventId: userEvent.id,
+        assistantEventId: assistantEvent.id,
+        memoryJobsQueued,
+        workingMemory: await syncWorkingMemoryRecentContext(sessionId),
+        sessionState: await redisRuntimeStore.getSessionState(sessionId)
+      };
+    });
+  },
+
   async handleChatTurn({ sessionId, userId, message }) {
     const lockToken = await redisRuntimeStore.acquireSessionLock(sessionId);
 
