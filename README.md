@@ -275,12 +275,12 @@ http://localhost:4000/mcp
 For local ChatGPT testing:
 
 1. Start the API with npm run dev:api.
-2. Expose port 4000 through an HTTPS development tunnel, for example
-   ngrok http 4000.
+2. Start the local Cloudflare tunnel:
+   cloudflared tunnel --config /Users/vivekgowdas/.cloudflared/neura-ai-mcp.yml run neura-ai-mcp.
 3. In ChatGPT web, open Settings, enable Developer mode under Security and
    login, then open the Apps or Plugins management page.
-4. Select the plus button, create an app, and paste the tunnel URL ending in
-   /mcp, such as https://your-subdomain.ngrok.app/mcp.
+4. Select the plus button, create an app, and paste
+   https://nuerai.switchaicloud.com/mcp.
 5. Start a new chat, add the app from the tools menu, and test a normal
    conversation.
 6. Refresh the app connection after changing MCP tools or metadata.
