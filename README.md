@@ -234,6 +234,71 @@ Open `http://localhost:3000` for the chat UI and `http://localhost:3000/redis` f
 
 ---
 
+## ChatGPT Web Memory App
+
+This branch exposes AiNeura's memory layer to ChatGPT through a remote MCP
+server. The Vercel AI Gateway remains the model provider for the existing
+AiNeura web application; the ChatGPT app does not replace or reconfigure that
+generation path.
+
+The ChatGPT turn flow is:
+
+~~~
+ChatGPT user message
+        |
+        v
+neura_retrieve_context
+        |
+        v
+ChatGPT answers using the returned Neura context
+        |
+        v
+neura_record_turn
+        |
+        v
+Neura stores the user message and assistant response
+~~~
+
+ChatGPT remains the host model and controls when MCP tools are called. The
+connector instructs it to run the retrieve tool before answering and the
+record tool before sending the answer, but native ChatGPT does not provide a
+hard pre-response or post-response hook. The server can only store the
+assistant text that ChatGPT supplies to neura_record_turn; it cannot observe
+extra ChatGPT prose if the model bypasses the tool.
+
+The API exposes the MCP endpoint at:
+
+~~~
+http://localhost:4000/mcp
+~~~
+
+For local ChatGPT testing:
+
+1. Start the API with npm run dev:api.
+2. Start the local Cloudflare tunnel:
+   cloudflared tunnel --config /Users/vivekgowdas/.cloudflared/neura-ai-mcp.yml run neura-ai-mcp.
+3. In ChatGPT web, open Settings, enable Developer mode under Security and
+   login, then open the Apps or Plugins management page.
+4. Select the plus button, create an app, and paste
+   https://nuerai.switchaicloud.com/mcp.
+5. Start a new chat, add the app from the tools menu, and test a normal
+   conversation.
+6. Refresh the app connection after changing MCP tools or metadata.
+
+The current connector uses the MCP session ID as the Neura session ID and is
+intended for Developer Mode testing. It currently has no OAuth identity
+mapping, so do not expose an unauthenticated deployment publicly. A later
+production pass should add OAuth 2.1 so memories are isolated by the signed
+ChatGPT user's identity across connections.
+
+The server also supports MCP Inspector:
+
+~~~
+npx @modelcontextprotocol/inspector@latest
+~~~
+
+Select Streamable HTTP and connect to http://localhost:4000/mcp.
+
 ## Cloud Storage Configuration
 
 To use the full cloud-backed stack:

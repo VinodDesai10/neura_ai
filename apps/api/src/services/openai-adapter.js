@@ -37,6 +37,10 @@ function readUsage(payload) {
 }
 
 function getConfiguredProvider() {
+  if (process.env.AI_GATEWAY_API_KEY || process.env.AI_GATEWAY_BASE_URL) {
+    return "vercel-ai-gateway";
+  }
+
   if (process.env.OPENAI_API_KEY || process.env.OPENAI_BASE_URL) {
     return "openai-compatible";
   }
@@ -45,7 +49,7 @@ function getConfiguredProvider() {
 }
 
 function getConfiguredChatModel() {
-  return process.env.OPENAI_MODEL || "gpt-4.1-mini";
+  return process.env.AI_GATEWAY_MODEL || process.env.OPENAI_MODEL || "gpt-4.1-mini";
 }
 
 function extractResponseText(payload) {
@@ -98,13 +102,20 @@ function extractChatCompletionText(payload) {
 }
 
 async function callOpenAI(path, body) {
-  const baseUrl = (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/+$/, "");
+  const baseUrl = (
+    process.env.AI_GATEWAY_BASE_URL ||
+    (process.env.AI_GATEWAY_API_KEY
+      ? "https://ai-gateway.vercel.sh/v1"
+      : process.env.OPENAI_BASE_URL || "https://api.openai.com/v1")
+  ).replace(/\/+$/, "");
   const normalizedPath = path.startsWith("/v1/") ? path.slice(3) : path;
   const response = await fetch(`${baseUrl}${normalizedPath}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY || "lm-studio"}`
+      Authorization: `Bearer ${
+        process.env.AI_GATEWAY_API_KEY || process.env.OPENAI_API_KEY || "lm-studio"
+      }`
     },
     body: JSON.stringify(body)
   });
@@ -124,8 +135,8 @@ export const openAIAdapter = {
   },
 
   async generateResponseWithUsage(prompt) {
-    if (!process.env.OPENAI_API_KEY) {
-      if (!process.env.OPENAI_BASE_URL) {
+    if (!process.env.AI_GATEWAY_API_KEY && !process.env.OPENAI_API_KEY) {
+      if (!process.env.AI_GATEWAY_BASE_URL && !process.env.OPENAI_BASE_URL) {
         return {
           text: buildFallbackReply(prompt),
           provider: "local-fallback",
@@ -138,6 +149,17 @@ export const openAIAdapter = {
 
     const payload = await callOpenAI("/v1/chat/completions", {
       model: getConfiguredChatModel(),
+      ...(process.env.AI_GATEWAY_API_KEY
+        ? {
+            providerOptions: {
+              gateway: {
+                models: [
+                  process.env.AI_GATEWAY_FALLBACK_MODEL || "inclusionai/ling-3.0-flash"
+                ]
+              }
+            }
+          }
+        : {}),
       messages: [
         {
           role: "system",
@@ -163,15 +185,18 @@ export const openAIAdapter = {
   },
 
   async embedText(text) {
-    const model = process.env.OPENAI_EMBEDDING_MODEL || "text-embedding-3-small";
+    const model =
+      process.env.AI_GATEWAY_EMBEDDING_MODEL ||
+      process.env.OPENAI_EMBEDDING_MODEL ||
+      "text-embedding-3-small";
     const cached = await redisRuntimeStore.getCachedEmbedding({ model, text });
 
     if (cached?.embedding) {
       return cached.embedding;
     }
 
-    if (!process.env.OPENAI_API_KEY) {
-      if (!process.env.OPENAI_BASE_URL) {
+    if (!process.env.AI_GATEWAY_API_KEY && !process.env.OPENAI_API_KEY) {
+      if (!process.env.AI_GATEWAY_BASE_URL && !process.env.OPENAI_BASE_URL) {
         return null;
       }
     }

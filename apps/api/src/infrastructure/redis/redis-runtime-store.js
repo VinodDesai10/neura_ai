@@ -10,6 +10,10 @@ function getPrefix() {
   return process.env.REDIS_RUNTIME_PREFIX || "neura";
 }
 
+function getMcpTurnKey(sessionId, turnId) {
+  return getSessionKey(sessionId, "mcp-turn:" + hashValue(turnId));
+}
+
 function hashValue(value) {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -223,6 +227,18 @@ export const redisRuntimeStore = {
     }
 
     return state;
+  },
+
+  async getMcpTurnRecord({ sessionId, turnId }) {
+    return getJson(getMcpTurnKey(sessionId, turnId));
+  },
+
+  async setMcpTurnRecord({ sessionId, turnId, payload }) {
+    await setJson(
+      getMcpTurnKey(sessionId, turnId),
+      payload,
+      readPositiveNumber("MCP_TURN_IDEMPOTENCY_TTL_SECONDS", 7 * 24 * 60 * 60)
+    );
   },
 
   async acquireSessionLock(sessionId, ttlSeconds = 15) {

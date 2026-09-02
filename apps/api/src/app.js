@@ -21,6 +21,7 @@ import { chatRoutes }   from "./routes/chat.routes.js";
 import { debugRoutes }  from "./routes/debug.routes.js";
 import { redisRoutes }  from "./routes/redis.routes.js";
 import { graphRoutes }  from "./routes/graph.routes.js";
+import { mcpRoutes }    from "./routes/mcp.routes.js";
 
 /**
  * pino-http middleware instance (created once, reused per-request).
@@ -88,6 +89,7 @@ const httpLogger = pinoHttp({
  * one that returns `true` wins. Add new route modules here.
  */
 const routeHandlers = [
+  mcpRoutes,
   healthRoutes,
   chatRoutes,
   debugRoutes,
@@ -120,6 +122,15 @@ export function requestHandler(req, res) {
 
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
+    const mcpUrl = new URL(
+      req.url,
+      "http://" + (req.headers.host || "localhost")
+    );
+
+    if (mcpRoutes(req.method, mcpUrl.pathname, req, res)) {
+      return;
+    }
+
     sendJson(res, 204, {});
     return;
   }
