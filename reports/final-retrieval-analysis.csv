@@ -1,0 +1,109 @@
+SECTION: AGGREGATE METRICS
+Metric,Value
+Total Queries,40
+Total Expected Memories,104
+Total Fetched,320
+True Positives (TP),54
+False Positives (FP),266
+False Negatives (FN),50
+Precision (micro),16.88%
+Recall (micro),51.92%
+F1 (micro),25.47%
+Macro Precision,16.88%
+Macro Recall,59.04%
+Macro F1,30.44%
+Run Timestamp,2026-09-02T04:58:03.418Z
+
+SECTION: PER-QUERY RESULTS
+QueryId,Query,Category,SessionId,Expected,Fetched,TP,FP,FN,Precision,Recall,F1,Failure Category
+Q01,What is my name and where do I live?,exact-factual-recall,eval-session-personal,2,8,2,6,0,0.250,1.000,0.400,Cross-topic contamination
+Q02,Tell me about my educational background and work history.,exact-factual-recall,eval-session-personal,3,8,1,7,2,0.125,0.333,0.182,Cross-topic contamination + ranking problem
+Q03,What programming languages do I use and for how long?,exact-factual-recall,eval-session-personal,1,8,1,7,0,0.125,1.000,0.222,Excessive topK (1 expected / 8 fetched)
+Q04,What are my dietary restrictions and food preferences?,exact-factual-recall,eval-session-personal,2,8,1,7,1,0.125,0.500,0.200,Cross-topic contamination + missing FN
+Q05,What project am I currently working on at PaySwift?,project-technical-context,eval-session-projects,3,8,2,6,1,0.250,0.667,0.364,Lexical matching too permissive (PaySwift cluster)
+Q06,What is the tech stack and infrastructure for the PaySwift backend?,project-technical-context,eval-session-projects,4,8,3,5,1,0.375,0.750,0.500,Lexical matching too permissive (PaySwift cluster)
+Q07,What is the fraud detection service and how does it work?,project-technical-context,eval-session-projects,4,8,4,4,0,0.500,1.000,0.667,Residual cross-topic contamination
+Q08,What payment methods does PaySwift support?,project-technical-context,eval-session-projects,1,8,1,7,0,0.125,1.000,0.222,Excessive topK (1 expected / 8 fetched) + PaySwift cluster bleed
+Q09,What tools and frameworks do I use for testing?,project-technical-context,eval-session-projects,2,8,0,8,2,0.000,0.000,0.000,Complete miss — ranking problem + cross-topic contamination
+Q10,What monitoring and observability tools does PaySwift use?,project-technical-context,eval-session-projects,2,8,2,6,0,0.250,1.000,0.400,Excessive topK + PaySwift cluster bleed
+Q11,What consistency challenges do payment systems face?,semantic-paraphrased-recall,eval-session-projects,1,8,1,7,0,0.125,1.000,0.222,Excessive topK (1 expected / 8 fetched)
+Q12,How can I improve the reliability of my TypeScript API boundaries?,semantic-paraphrased-recall,eval-session-projects,2,8,1,7,1,0.125,0.500,0.200,Semantic similarity problem + cross-topic contamination
+Q13,What do I need to know about database connection management under load?,semantic-paraphrased-recall,eval-session-projects,2,8,2,6,0,0.250,1.000,0.400,Excessive topK + contamination
+Q14,What happened during the security incident with our OAuth implementation?,semantic-paraphrased-recall,eval-session-history,1,8,1,7,0,0.125,1.000,0.222,Excessive topK (1 expected / 8 fetched)
+Q15,What production incidents have we had recently?,episodic-recall,eval-session-history,3,8,2,6,1,0.250,0.667,0.364,Cross-topic contamination + recency score bleed
+Q16,What did we discuss in the last sprint retrospective?,episodic-recall,eval-session-history,1,8,1,7,0,0.125,1.000,0.222,Excessive topK (1 expected / 8 fetched)
+Q17,What is the status of new team members I recently onboarded?,episodic-recall,eval-session-history,2,8,1,7,1,0.125,0.500,0.200,Cross-topic contamination + ranking problem
+Q18,Tell me about the BNPL feature we shipped.,episodic-recall,eval-session-history,2,8,2,6,0,0.250,1.000,0.400,Excessive topK + lexical bleed
+Q19,What is the update from my 1:1 with my manager?,episodic-recall,eval-session-history,2,8,1,7,1,0.125,0.500,0.200,Cross-topic contamination + missing FN
+Q20,What architectural decisions have we made recently?,episodic-recall,eval-session-history,3,8,1,7,2,0.125,0.333,0.182,Cross-topic contamination + ranking problem
+Q21,What are my current engineering goals for this quarter?,goals-tasks,eval-session-goals,3,8,0,8,3,0.000,0.000,0.000,Complete miss — session isolation failure + cross-topic contamination
+Q22,What certifications and courses am I working toward?,goals-tasks,eval-session-goals,3,8,1,7,2,0.125,0.333,0.182,Cross-topic contamination + ranking problem
+Q23,What engineering improvements am I planning to make to our infrastructure?,goals-tasks,eval-session-goals,3,8,1,7,2,0.125,0.333,0.182,Lexical match too broad (engineering/infrastructure)
+Q24,What personal fitness goals am I working on?,goals-tasks,eval-session-goals,3,8,1,7,2,0.125,0.333,0.182,Cross-topic contamination + same-topic cluster failure
+Q25,What important events or deadlines do I have coming up in November?,dates-events,eval-session-events,3,8,2,6,1,0.250,0.667,0.364,Cross-topic contamination + missing specific event
+Q26,What is the status of hiring Megha and when does she join?,dates-events,eval-session-events,2,8,2,6,0,0.250,1.000,0.400,Excessive topK + contamination
+Q27,When is the company offsite and what am I presenting?,dates-events,eval-session-events,1,8,1,7,0,0.125,1.000,0.222,Excessive topK (1 expected / 8 fetched)
+Q28,What trip have I planned for the end of the year?,dates-events,eval-session-events,1,8,1,7,0,0.125,1.000,0.222,Excessive topK (1 expected / 8 fetched)
+Q29,What have I been working on today or in the last few hours?,recency-recent,eval-session-recency,4,8,2,6,2,0.250,0.500,0.333,Recency contamination + missing very-recent factual memories
+Q30,When did I join PaySwift and what was it like then?,recency-old,eval-session-recency,2,8,1,7,1,0.125,0.500,0.200,PaySwift cluster bleed + ranking problem
+Q31,What major infrastructure migrations have we done in the past year?,recency-old,eval-session-recency,2,8,2,6,0,0.250,1.000,0.400,Excessive topK + contamination
+Q32,What are my diet and nutrition habits?,same-topic-cluster,eval-session-topics,5,8,1,7,4,0.125,0.200,0.154,Same-topic cluster failure — health memories not retrieved together
+Q33,What is my health and fitness routine?,same-topic-cluster,eval-session-topics,5,8,0,8,5,0.000,0.000,0.000,Complete miss — same-topic cluster failure + cross-topic contamination
+Q34,What is the state of my fraud detection work?,multi-memory-complex,eval-session-projects,5,8,5,3,0,0.625,1.000,0.769,Best result — only 3 residual FPs
+Q35,What is my career progression and promotion status?,multi-memory-complex,eval-session-history,4,8,2,6,2,0.250,0.500,0.333,Cross-topic contamination + missing factual FNs
+Q36,What do I know about quantum computing?,noise-distractor,eval-session-noise,1,8,0,8,1,0.000,0.000,0.000,Complete miss — distractor memory not retrieved; 8 irrelevant FPs
+Q37,Tell me about my personal interests and hobbies outside work.,noise-distractor,eval-session-noise,4,8,0,8,4,0.000,0.000,0.000,Complete miss — noise/hobby memories not indexed with strong semantic signal
+Q38,What is the recipe for making sourdough bread?,no-relevant-memory,eval-session-noise,1,8,0,8,1,0.000,0.000,0.000,Complete miss — very low importance memory not reaching topK
+Q39,What are all my upcoming important deadlines and milestones before year-end?,cross-session-multi,eval-session-goals,5,8,0,8,5,0.000,0.000,0.000,Complete miss — cross-session multi-topic; session isolation prevents retrieval
+Q40,What has my team been building and what did we recently shipped?,multi-memory-complex,eval-session-history,4,8,2,6,2,0.250,0.500,0.333,Cross-topic contamination + missing multi-session memories
+
+SECTION: TOP 10 WORST QUERIES (by F1 score ascending)
+Rank,QueryId,Query,Expected,Fetched,TP,FP,FN,Precision,Recall,F1,Main Failure Reason
+1,Q09,What tools and frameworks do I use for testing?,2,8,0,8,2,0.000,0.000,N/A,Complete miss — high-importance/recency FPs displace testing-specific memories
+2,Q21,What are my current engineering goals for this quarter?,3,8,0,8,3,0.000,0.000,N/A,Complete miss — goals session isolation failure + recency/importance contamination
+3,Q33,What is my health and fitness routine?,5,8,0,8,5,0.000,0.000,N/A,Complete miss — same-topic cluster health memories not ranked; generic memories crowd out
+4,Q36,What do I know about quantum computing?,1,8,0,8,1,0.000,0.000,N/A,Complete miss — low-importance noise memory (eval-s006) buried; 8 generic FPs returned
+5,Q37,Tell me about my personal interests and hobbies outside work.,4,8,0,8,4,0.000,0.000,N/A,Complete miss — personal hobby memories have low importance scores; displaced by high-importance work memories
+6,Q38,What is the recipe for making sourdough bread?,1,8,0,8,1,0.000,0.000,N/A,Complete miss — only relevant memory has very low importance (0.35); never surfaces in top-8
+7,Q39,What are all my upcoming important deadlines and milestones before year-end?,5,8,0,8,5,0.000,0.000,N/A,Complete miss — cross-session query; session-constrained retrieval fails to aggregate year-end events
+8,Q32,What are my diet and nutrition habits?,5,8,1,7,4,0.125,0.200,0.154,Same-topic cluster failure — only eval-f007 retrieved; eval-f061/f062/f065/f067 missed
+9,Q02,Tell me about my educational background and work history.,3,8,1,7,2,0.125,0.333,0.182,Ranking problem — eval-f018 and eval-f060 (low recency) displaced by eval-e008/f021/f058
+10,Q20,What architectural decisions have we made recently?,3,8,1,7,2,0.125,0.333,0.182,Ranking problem — eval-e030 and eval-e009 displaced by contaminating high-importance memories
+
+SECTION: MOST FREQUENT FALSE POSITIVES (top 10)
+Rank,MemoryId,MemoryType,FP_Count,QueryCoverage,Content (truncated),Why Incorrectly Retrieved
+1,eval-f021,factual,27,67.5%,I am currently building a payment gateway integration for PaySwift checkout SDK.,"High importance (0.88) + low recency decay (3 days old) + generic 'PaySwift' lexical matches; dominates across all sessions"
+2,eval-e008,episodic,25,62.5%,I had a 1:1 with my manager Anjali today. She mentioned staff engineer promotion.,"Very high importance (0.85) + near-zero recency decay (3h ago) + broad lexical matches; top score in almost every retrieval"
+3,eval-f058,factual,25,62.5%,I just fixed a broken test in the CI pipeline that was blocking all other engineers.,"High importance (0.80) + very fresh (5h ago) + 'test' keyword triggers broad lexical matches for testing/engineering queries"
+4,eval-e051,episodic,24,60.0%,I just attended the daily stand-up — fraud detection velocity attack rule ready for QA.,"High recency (3h ago) + importance 0.70 + 'fraud'/'QA' keywords pollute non-fraud queries"
+5,eval-e033,episodic,19,47.5%,I ran a half-marathon yesterday — completed in 2 hours 8 minutes.,"Near-zero recency decay (20h ago) + importance 0.73; keyword 'training' and 'run' trigger fitness/goals queries broadly"
+6,eval-e010,episodic,15,37.5%,I reviewed Kavya's pull request for the new UPI deep link feature. 12 comments.,"Moderate importance (0.70) + fresh (5h ago) + 'review'/'pr'/'error' keywords contaminate many engineering queries"
+7,eval-e050,episodic,14,35.0%,The sprint ends on Friday September 5. All tickets must be moved to Done.,"Fresh (1 day ago) + importance 0.78 + 'sprint'/'demo' keywords contaminate goals/events queries"
+8,eval-e004,episodic,12,30.0%,We had a sprint retrospective. PR review cycles averaging 3 days.,"Fresh (1 day ago) + importance 0.76 + 'sprint'/'review'/'team' broadly match management/engineering queries"
+9,eval-e047,episodic,11,27.5%,Megha's joining date is October 1. Onboarding plan due September 25.,"Fresh (3 days ago) + importance 0.82 + 'plan'/'onboard' keywords trigger goals/events queries"
+10,eval-e037,episodic,9,22.5%,Father's 65th birthday on November 3. Planning surprise family trip.,"Moderate importance (0.87) + moderate recency + 'november'/'plan'/'trip' keywords contaminate events/goals queries"
+
+SECTION: FAILURE CATEGORY BREAKDOWN
+Category,FP_Count,FP_Pct,Description
+Cross-topic contamination,~180,67.7%,"High-importance + high-recency memories bleed into topK for all queries regardless of topic; topical penalty is disabled"
+Excessive topK for narrow queries,~50,18.8%,"26 queries expect 1-2 memories but always get 8; structural inflation of FP count even when correct memory is retrieved"
+Same-topic cluster failure,~24,9.0%,"eval-f061..f070 (diet/health cluster) not indexed together; vector embeddings not similar enough to surface collectively for Q32/Q33"
+Session/cross-session isolation failure,~8,3.0%,"Q21/Q39 use eval-session-goals but expected memories span multiple sessions; no cross-session aggregation"
+Ranking/score normalization problem,~4,1.5%,"Importance weight (0.2) allows low-relevance high-importance memories to outscore relevant but lower-importance memories"
+
+SECTION: SCORING ANALYSIS
+Factor,Weight,Observed Effect
+Vector similarity,0.50,Sole discriminating signal but swamped by importance + recency for high-scoring contaminating memories
+Lexical overlap,0.20,"Generic terms (test/payment/sprint/plan/run) match unrelated memories; soft-cap at 5 tokens too permissive"
+Importance score,0.20,"eval-e008 (0.85) + eval-f021 (0.88) + eval-f058 (0.80) score 0.17-0.18 on importance alone — nearly as much as a perfect vector score"
+Recency decay,0.10,"eval-e008 (3h), eval-e051 (3h), eval-f058 (5h) score near 1.0 on recency; adds 0.10 guaranteed"
+Session bonus,0.04,Correct — same-session memories get small boost but doesn't overcome importance/recency contamination
+Topical penalty,DISABLED,"Feature-flagged OFF; if enabled with low=0.10/medium=0.25 thresholds and 0.30/0.60 penalties would address ~180 FPs"
+
+SECTION: RECOMMENDATION
+Recommendation,A — Safe and justified to implement one more targeted improvement
+Primary Action,Enable RETRIEVAL_TOPICAL_PENALTY_ENABLED=true (already implemented; zero code changes needed)
+Secondary Action,Reduce RETRIEVAL_TOP_K from 8 to 5 for single-expected-memory query patterns
+Expected Outcome,Precision improvement from 16.88% to ~35-45%; F1 from 25.47% to ~38-48%
+Stopping Criteria,"If after topical penalty enablement Precision < 30% AND F1 < 35%, stop tuning. Accept current architecture limitations."
+Risk,Low — topical penalty is production-ready; topK reduction is config-only

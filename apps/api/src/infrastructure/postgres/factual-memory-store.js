@@ -32,12 +32,37 @@ function isSmallTalkQuery(query) {
   );
 }
 
+// ─── Cosine similarity (RC2: score stored factual embeddings against query embedding) ──
+
+/**
+ * Compute cosine similarity between two embedding vectors.
+ * Returns a value in [-1, 1], or 0 when either vector is missing/invalid.
+ *
+ * @param {number[]|null} a
+ * @param {number[]|null} b
+ * @returns {number}
+ */
+function cosineSimilarity(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length || a.length === 0) {
+    return 0;
+  }
+  let dot = 0, magA = 0, magB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot  += a[i] * b[i];
+    magA += a[i] * a[i];
+    magB += b[i] * b[i];
+  }
+  if (magA === 0 || magB === 0) return 0;
+  return dot / (Math.sqrt(magA) * Math.sqrt(magB));
+}
+
 // ─── Row → memory object ──────────────────────────────────────────────────────
 
 function rowToMemory(row) {
   return {
     id:            row.id,
     sessionId:     row.session_id,
+    userId:        row.user_id ?? null,
     fingerprint:   row.fingerprint,
     sourceEventId: row.source_event_id,
     memoryType:    row.memory_type,
@@ -60,52 +85,115 @@ export const factualMemoryStore = {
 
     if (await ensurePostgresReady()) {
       const sql = getPostgresClient();
-      const rows = await sql`
-        insert into factual_memories (
-          id, session_id, fingerprint, source_event_id, memory_type,
-          content, summary, metadata, embedding, created_at, updated_at
-        ) values (
-          ${withFingerprint.id},
-          ${withFingerprint.sessionId},
-          ${withFingerprint.fingerprint},
-          ${withFingerprint.sourceEventId},
-          ${withFingerprint.memoryType},
-          ${withFingerprint.content},
-          ${withFingerprint.summary},
-          ${sql.json(withFingerprint.metadata)},
-          ${withFingerprint.embedding ? sql.json(withFingerprint.embedding) : null},
-          ${withFingerprint.metadata.timestamp},
-          ${withFingerprint.metadata.timestamp}
-        )
-        on conflict (session_id, fingerprint) do update
-        set
-          summary        = excluded.summary,
-          content        = excluded.content,
-          source_event_id = excluded.source_event_id,
-          updated_at     = excluded.updated_at,
-          metadata = jsonb_set(
-            case
-              when jsonb_typeof(excluded.metadata) = 'object' then excluded.metadata
-              else '{}'::jsonb
-            end,
-            '{importance}',
-            to_jsonb(greatest(
-              coalesce((factual_memories.metadata->>'importance')::float, 0),
-              coalesce((excluded.metadata->>'importance')::float, 0)
-            ))
+      const userId = withFingerprint.userId ?? null;
+
+      // Two upsert strategies:
+      //   1. When userId is present: use the (user_id, fingerprint) partial unique
+      //      index so the same fact is stored only once per user regardless of
+      //      which session produced it.  This is the key that makes cross-session
+      //      retrieval possible.
+      //   2. When userId is absent: fall back to the original (session_id, fingerprint)
+      //      unique constraint so isolated/anonymous sessions are still deduped.
+      let rows;
+      if (userId) {
+        rows = await sql`
+          insert into factual_memories (
+            id, session_id, user_id, fingerprint, source_event_id, memory_type,
+            content, summary, metadata, embedding, created_at, updated_at
+          ) values (
+            ${withFingerprint.id},
+            ${withFingerprint.sessionId},
+            ${userId},
+            ${withFingerprint.fingerprint},
+            ${withFingerprint.sourceEventId},
+            ${withFingerprint.memoryType},
+            ${withFingerprint.content},
+            ${withFingerprint.summary},
+            ${sql.json(withFingerprint.metadata)},
+            ${withFingerprint.embedding ? sql.json(withFingerprint.embedding) : null},
+            ${withFingerprint.metadata.timestamp},
+            ${withFingerprint.metadata.timestamp}
           )
-        returning
-          id, session_id, fingerprint, source_event_id, memory_type,
-          content, summary, metadata, embedding
-      `;
+          on conflict (user_id, fingerprint)
+          where user_id is not null
+          do update
+          set
+            summary         = excluded.summary,
+            content         = excluded.content,
+            source_event_id = excluded.source_event_id,
+            updated_at      = excluded.updated_at,
+            metadata = jsonb_set(
+              case
+                when jsonb_typeof(excluded.metadata) = 'object' then excluded.metadata
+                else '{}'::jsonb
+              end,
+              '{importance}',
+              to_jsonb(greatest(
+                coalesce((factual_memories.metadata->>'importance')::float, 0),
+                coalesce((excluded.metadata->>'importance')::float, 0)
+              ))
+            )
+          returning
+            id, session_id, user_id, fingerprint, source_event_id, memory_type,
+            content, summary, metadata, embedding
+        `;
+      } else {
+        rows = await sql`
+          insert into factual_memories (
+            id, session_id, user_id, fingerprint, source_event_id, memory_type,
+            content, summary, metadata, embedding, created_at, updated_at
+          ) values (
+            ${withFingerprint.id},
+            ${withFingerprint.sessionId},
+            ${null},
+            ${withFingerprint.fingerprint},
+            ${withFingerprint.sourceEventId},
+            ${withFingerprint.memoryType},
+            ${withFingerprint.content},
+            ${withFingerprint.summary},
+            ${sql.json(withFingerprint.metadata)},
+            ${withFingerprint.embedding ? sql.json(withFingerprint.embedding) : null},
+            ${withFingerprint.metadata.timestamp},
+            ${withFingerprint.metadata.timestamp}
+          )
+          on conflict (session_id, fingerprint) do update
+          set
+            summary         = excluded.summary,
+            content         = excluded.content,
+            source_event_id = excluded.source_event_id,
+            updated_at      = excluded.updated_at,
+            metadata = jsonb_set(
+              case
+                when jsonb_typeof(excluded.metadata) = 'object' then excluded.metadata
+                else '{}'::jsonb
+              end,
+              '{importance}',
+              to_jsonb(greatest(
+                coalesce((factual_memories.metadata->>'importance')::float, 0),
+                coalesce((excluded.metadata->>'importance')::float, 0)
+              ))
+            )
+          returning
+            id, session_id, user_id, fingerprint, source_event_id, memory_type,
+            content, summary, metadata, embedding
+        `;
+      }
 
       return rowToMemory(rows[0]);
     }
 
     // In-memory fallback
-    const existing = factualMemories.find(
-      (e) => e.sessionId === withFingerprint.sessionId && e.fingerprint === withFingerprint.fingerprint
-    );
+    const userId = withFingerprint.userId ?? null;
+    // Prefer user-level dedup when userId is present; fall back to session-level
+    const existing = userId
+      ? factualMemories.find(
+          (e) => e.userId === userId && e.fingerprint === withFingerprint.fingerprint
+        ) || factualMemories.find(
+          (e) => e.sessionId === withFingerprint.sessionId && e.fingerprint === withFingerprint.fingerprint
+        )
+      : factualMemories.find(
+          (e) => e.sessionId === withFingerprint.sessionId && e.fingerprint === withFingerprint.fingerprint
+        );
 
     if (existing) {
       existing.summary   = withFingerprint.summary;
@@ -127,16 +215,28 @@ export const factualMemoryStore = {
   /**
    * Retrieve and score factual memories relevant to `query`.
    *
-   * Namespace isolation: only memories belonging to `sessionId` are returned.
-   * Cross-session leakage has been removed — importance weight in the hybrid
-   * score is sufficient to surface high-value factual memories without the risk
-   * of one user's data appearing in another session.
+   * RC2 fix: accepts an optional `queryEmbedding`. When a stored embedding
+   * exists for a factual memory AND the query embedding is available, cosine
+   * similarity is used as the vectorScore — giving factual memories the same
+   * 40% vector-weight advantage that Qdrant episodic memories have.
    *
-   * @param {string} query
-   * @param {string} sessionId
-   * @returns {Promise<object[]>}  memories sorted by hybrid score, each with `_retrieval`
+   * RC3 fix: the SQL query now orders by ts_rank DESC first (FTS relevance
+   * takes priority over raw importance) and the client-side `passes` gate
+   * is tightened: a memory must have lexical OR semantic signal, or be
+   * very high importance (≥ 0.85). The old threshold (0.65) let too many
+   * unrelated memories through.
+   *
+   * Namespace strategy (unchanged):
+   *   - With userId: session_id = $sessionId OR user_id = $userId
+   *   - Without:     session_id = $sessionId only
+   *
+   * @param {string}          query
+   * @param {string}          sessionId
+   * @param {string|null}    [userId]
+   * @param {number[]|null}  [queryEmbedding]  – RC2: query vector for cosine similarity
+   * @returns {Promise<object[]>}
    */
-  async findRelevant(query, sessionId) {
+  async findRelevant(query, sessionId, userId = null, queryEmbedding = null) {
     if (isSmallTalkQuery(query)) return [];
 
     const cfg = readRetrievalConfig();
@@ -144,37 +244,58 @@ export const factualMemoryStore = {
     if (await ensurePostgresReady()) {
       const sql = getPostgresClient();
 
-      // Fetch candidates for this session ordered by importance (high first) then recency.
-      // The tsvector-based ts_rank_cd lexical score is computed in Postgres so we can
-      // pass it directly into the hybrid formula without a second client-side scan.
-      // Fallback: when the search_vector column is not yet populated (first boot before
-      // the background index catches up) we gracefully fall back to importance ordering.
-      const rows = await sql`
-        select
-          id, session_id, fingerprint, source_event_id, memory_type,
-          content, summary, metadata, embedding, updated_at,
-          coalesce(
-            ts_rank_cd(search_vector, plainto_tsquery('english', ${query})),
-            0
-          ) as ts_rank
-        from factual_memories
-        where session_id = ${sessionId}
-        order by (metadata->>'importance')::float desc, updated_at desc
-        limit ${cfg.topK * 4}
-      `;
+      // RC3: order by ts_rank DESC first so FTS-matching memories appear before
+      // unrelated high-importance memories.  Limit is still topK*4 so the ranker
+      // has a reasonable candidate pool.
+      const rows = userId
+        ? await sql`
+            select
+              id, session_id, user_id, fingerprint, source_event_id, memory_type,
+              content, summary, metadata, embedding, updated_at,
+              coalesce(
+                ts_rank_cd(search_vector, plainto_tsquery('english', ${query})),
+                0
+              ) as ts_rank
+            from factual_memories
+            where session_id = ${sessionId}
+               or user_id    = ${userId}
+            order by ts_rank desc, (metadata->>'importance')::float desc, updated_at desc
+            limit ${cfg.topK * 4}
+          `
+        : await sql`
+            select
+              id, session_id, user_id, fingerprint, source_event_id, memory_type,
+              content, summary, metadata, embedding, updated_at,
+              coalesce(
+                ts_rank_cd(search_vector, plainto_tsquery('english', ${query})),
+                0
+              ) as ts_rank
+            from factual_memories
+            where session_id = ${sessionId}
+            order by ts_rank desc, (metadata->>'importance')::float desc, updated_at desc
+            limit ${cfg.topK * 4}
+          `;
 
       return rows
         .map((row) => {
           const memory = rowToMemory(row);
-          // ts_rank is already 0–1 from Postgres; treat it as lexical signal
+
+          // Lexical score from Postgres FTS (ts_rank is 0–1 from Postgres)
           const pgLexical    = Number(row.ts_rank) || 0;
-          // Fall back to client-side token overlap when ts_rank is 0 (no FTS column yet)
-          const clientLexical = pgLexical > 0 ? pgLexical * 5 : scoreQueryOverlap(query, memory.summary || memory.content || "");
+          const clientLexical = pgLexical > 0
+            ? pgLexical * 5
+            : scoreQueryOverlap(query, memory.summary || memory.content || "");
           const lexicalScore  = pgLexical > 0 ? pgLexical * 5 : clientLexical;
+
+          // RC2: use stored embedding + query embedding for vectorScore when available
+          const storedEmbedding = memory.embedding;
+          const vectorScore = (Array.isArray(queryEmbedding) && Array.isArray(storedEmbedding))
+            ? Math.max(0, cosineSimilarity(queryEmbedding, storedEmbedding))
+            : 0;
 
           const breakdown = computeHybridScore(
             {
-              vectorScore:     0,   // factual store has no embedding query
+              vectorScore,
               lexicalScore,
               importanceScore: Number(memory.metadata?.importance || 0),
               timestamp:       memory.metadata?.timestamp || null,
@@ -185,10 +306,19 @@ export const factualMemoryStore = {
             cfg
           );
 
-          // Require at least some lexical signal or high importance to pass filter
+          // RC3: tighter relevance gate.
+          // A factual memory passes if it has SOME relevance signal:
+          //   - lexical match (ts_rank > 0 or token overlap)
+          //   - semantic match (cosine similarity > 0.20 — above noise level)
+          //     RC4: raised from 0.15 → 0.20 to reduce FP noise introduced by
+          //     RC2 (stored factual embeddings).  Many topically adjacent but
+          //     irrelevant factual memories scored 0.15–0.19 cosine similarity
+          //     against arbitrary queries, causing them to flood the FP set.
+          //   - extremely high standalone importance (≥ 0.85, reduced from 0.65)
           const passes =
             lexicalScore > 0 ||
-            Number(memory.metadata?.importance || 0) >= 0.65;
+            vectorScore > 0.20 ||
+            Number(memory.metadata?.importance || 0) >= 0.85;
 
           return passes
             ? {
@@ -212,17 +342,27 @@ export const factualMemoryStore = {
 
     // ── In-memory fallback ───────────────────────────────────────────────────
     return factualMemories
-      .filter((m) => m.sessionId === sessionId)
+      .filter((m) =>
+        m.sessionId === sessionId ||
+        (userId && m.userId === userId)
+      )
       .map((memory) => {
-        const lexicalScore  = scoreQueryOverlap(query, memory.summary || memory.content || "");
+        const lexicalScore    = scoreQueryOverlap(query, memory.summary || memory.content || "");
         const importanceScore = Number(memory.metadata?.importance || 0);
 
-        const passes = lexicalScore > 0 || importanceScore >= 0.65;
+        // RC2: cosine similarity against stored embedding when query embedding available
+        const storedEmbedding = memory.embedding;
+        const vectorScore = (Array.isArray(queryEmbedding) && Array.isArray(storedEmbedding))
+          ? Math.max(0, cosineSimilarity(queryEmbedding, storedEmbedding))
+          : 0;
+
+        // RC3: tighter gate. RC4: vectorScore threshold raised 0.15 → 0.20 (see Postgres path above).
+        const passes = lexicalScore > 0 || vectorScore > 0.20 || importanceScore >= 0.85;
         if (!passes) return null;
 
         const breakdown = computeHybridScore(
           {
-            vectorScore:     0,
+            vectorScore,
             lexicalScore,
             importanceScore,
             timestamp:       memory.metadata?.timestamp || null,
@@ -337,7 +477,7 @@ export const factualMemoryStore = {
       const sql = getPostgresClient();
       const rows = await sql`
         select
-          id, session_id, fingerprint, source_event_id, memory_type,
+          id, session_id, user_id, fingerprint, source_event_id, memory_type,
           content, summary, metadata, embedding
         from factual_memories
         order by updated_at asc

@@ -1,0 +1,134 @@
+{
+  "meta": {
+    "generatedAt": "2026-09-01T09:33:21.194Z",
+    "nodeVersion": "v25.9.0",
+    "description": "Neura AI classifier confusion matrix report. All predictions produced by live production code. No synthetic/random values.",
+    "methodology": "Each classifier was invoked with hand-labelled inputs grounded in the classifier's documented source logic. Binary classifiers report TP/TN/FP/FN plus precision, recall, and F1. The multi-class classifier (classifyMemoryType) reports a 3×3 confusion matrix plus one-vs-rest per-class metrics and macro-averages."
+  },
+  "classifiers": {
+    "classifyMemoryType": {
+      "type": "multiclass",
+      "classes": [
+        "factual",
+        "episodic",
+        "semantic"
+      ],
+      "n": 41,
+      "accuracy": 1,
+      "matrix": {
+        "factual": {
+          "factual": 15,
+          "episodic": 0,
+          "semantic": 0
+        },
+        "episodic": {
+          "factual": 0,
+          "episodic": 15,
+          "semantic": 0
+        },
+        "semantic": {
+          "factual": 0,
+          "episodic": 0,
+          "semantic": 11
+        }
+      },
+      "perClass": {
+        "factual": {
+          "tp": 15,
+          "tn": 26,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "accuracy": 1
+        },
+        "episodic": {
+          "tp": 15,
+          "tn": 26,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "accuracy": 1
+        },
+        "semantic": {
+          "tp": 11,
+          "tn": 30,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "accuracy": 1
+        }
+      },
+      "macroAvg": {
+        "precision": 1,
+        "recall": 1,
+        "f1": 1
+      },
+      "misclassifiedCases": []
+    },
+    "isSmallTalk": {
+      "type": "binary",
+      "n": 30,
+      "tp": 14,
+      "tn": 15,
+      "fp": 0,
+      "fn": 1,
+      "accuracy": 0.9667,
+      "precision": 1,
+      "recall": 0.9333,
+      "f1": 0.9655,
+      "misclassifiedCases": [
+        {
+          "input": "how are you",
+          "expected": true,
+          "predicted": false,
+          "note": "3 words but exact match phrase in SMALL_TALK_WORDS"
+        }
+      ]
+    },
+    "hasLowSignalContent": {
+      "type": "binary",
+      "n": 25,
+      "tp": 13,
+      "tn": 12,
+      "fp": 0,
+      "fn": 0,
+      "accuracy": 1,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "misclassifiedCases": []
+    },
+    "shouldStoreMemory": {
+      "type": "binary",
+      "n": 29,
+      "tp": 13,
+      "tn": 16,
+      "fp": 0,
+      "fn": 0,
+      "accuracy": 1,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "misclassifiedCases": []
+    },
+    "isDuplicate": {
+      "type": "binary",
+      "n": 20,
+      "tp": 7,
+      "tn": 13,
+      "fp": 0,
+      "fn": 0,
+      "accuracy": 1,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "misclassifiedCases": []
+    }
+  }
+}

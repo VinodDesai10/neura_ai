@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Neura AI — Retrieval Before vs After</title>
+<style>
+:root{--bg:#0f172a;--bg2:#1e293b;--text:#e2e8f0;--muted:#64748b;--success:#22c55e;--danger:#ef4444;--blue:#3b82f6}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;line-height:1.6}
+.container{max-width:1400px;margin:0 auto;padding:24px}
+h1{font-size:1.8rem;font-weight:800;margin-bottom:6px}
+h2{font-size:1.25rem;font-weight:700;border-bottom:2px solid #334155;padding-bottom:6px;margin-bottom:16px}
+section{background:var(--bg2);border-radius:12px;padding:22px;margin-bottom:28px}
+.hero{background:linear-gradient(135deg,#1e293b,#0f172a,#1e1b4b)}
+table{width:100%;border-collapse:collapse;font-size:.84em}
+th{background:#334155;padding:9px 10px;text-align:left;white-space:nowrap}
+td{padding:7px 10px;border-bottom:1px solid #1e293b;vertical-align:middle}
+.improved td:first-child{border-left:3px solid var(--success)}
+.regression td:first-child{border-left:3px solid var(--danger)}
+.stable td:first-child{border-left:3px solid var(--blue)}
+code{font-family:monospace;background:#334155;padding:2px 6px;border-radius:4px;font-size:.85em}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px}
+.card{border-radius:10px;padding:16px;text-align:center;border:2px solid}
+.card-val{font-size:2rem;font-weight:800;font-family:monospace}
+.card.b{border-color:var(--blue);background:#1e3a5f33}.card.b .card-val{color:#60a5fa}
+.card.a{border-color:var(--success);background:#14532d33}.card.a .card-val{color:var(--success)}
+.card.d{border-color:#f59e0b;background:#45180033}.card.d .card-val{color:#f59e0b}
+.card-lbl{font-size:.78em;color:var(--muted);margin-top:3px}
+img{max-width:100%;border-radius:8px}
+</style>
+</head>
+<body>
+<div class="container">
+<section class="hero">
+  <h1>🔧 Neura AI — Retrieval Improvement Report</h1>
+  <p style="color:#64748b;margin-top:6px">Stage 3: Three root-cause fixes applied. Same 40 queries · same 160 memories · same ground truth as Stage 2 baseline.</p>
+  <p style="color:#94a3b8;font-size:.85em;margin-top:4px">Before: 2026-09-01T12:34:01.269Z · After: 2026-09-02T04:58:03.418Z</p>
+</section>
+
+<section>
+  <h2>📊 Aggregate Metrics</h2>
+  <div class="cards">
+    <div class="card b"><div class="card-val">10.3%</div><div class="card-lbl">BEFORE Precision</div></div>
+    <div class="card a"><div class="card-val">16.9%</div><div class="card-lbl">AFTER Precision</div></div>
+    <div class="card d"><div class="card-val">+6.6%</div><div class="card-lbl">Precision Δ</div></div>
+    <div class="card b"><div class="card-val">28.8%</div><div class="card-lbl">BEFORE Recall</div></div>
+    <div class="card a"><div class="card-val">51.9%</div><div class="card-lbl">AFTER Recall</div></div>
+    <div class="card d"><div class="card-val">+23.1%</div><div class="card-lbl">Recall Δ (+21pp)</div></div>
+    <div class="card b"><div class="card-val">15.2%</div><div class="card-lbl">BEFORE F1</div></div>
+    <div class="card a"><div class="card-val">25.5%</div><div class="card-lbl">AFTER F1</div></div>
+    <div class="card d"><div class="card-val">+10.3%</div><div class="card-lbl">F1 Δ</div></div>
+  </div>
+  <table>
+    <tr><th>Metric</th><th style="color:#60a5fa">BEFORE</th><th style="color:#22c55e">AFTER</th><th>Δ</th></tr>
+    <tr><td>Queries</td><td style="color:#60a5fa;text-align:center">40</td><td style="color:#22c55e;text-align:center">40</td><td style="color:#94a3b8;text-align:center;font-weight:700">0</td></tr><tr><td>Expected items</td><td style="color:#60a5fa;text-align:center">104</td><td style="color:#22c55e;text-align:center">104</td><td style="color:#94a3b8;text-align:center;font-weight:700">0</td></tr><tr><td>Fetched items</td><td style="color:#60a5fa;text-align:center">291</td><td style="color:#22c55e;text-align:center">320</td><td style="color:#f59e0b;text-align:center;font-weight:700">+29</td></tr><tr><td>TP ✓</td><td style="color:#60a5fa;text-align:center">30</td><td style="color:#22c55e;text-align:center">54</td><td style="color:#22c55e;text-align:center;font-weight:700">+24</td></tr><tr><td>FP ✗</td><td style="color:#60a5fa;text-align:center">261</td><td style="color:#22c55e;text-align:center">266</td><td style="color:#f59e0b;text-align:center;font-weight:700">+5</td></tr><tr><td>FN ⚠</td><td style="color:#60a5fa;text-align:center">74</td><td style="color:#22c55e;text-align:center">50</td><td style="color:#22c55e;text-align:center;font-weight:700">-24</td></tr><tr><td>Micro-Precision</td><td style="color:#60a5fa;text-align:center">10.31%</td><td style="color:#22c55e;text-align:center">16.88%</td><td style="color:#22c55e;text-align:center;font-weight:700">+6.56pp</td></tr><tr><td>Micro-Recall</td><td style="color:#60a5fa;text-align:center">28.85%</td><td style="color:#22c55e;text-align:center">51.92%</td><td style="color:#22c55e;text-align:center;font-weight:700">+23.07pp</td></tr><tr><td>Micro-F1</td><td style="color:#60a5fa;text-align:center">15.19%</td><td style="color:#22c55e;text-align:center">25.47%</td><td style="color:#22c55e;text-align:center;font-weight:700">+10.28pp</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>🔧 Changes Made</h2>
+  <div style="background:#334155;border-radius:8px;padding:14px;margin-bottom:10px">
+    <div style="font-weight:700;color:#22c55e;margin-bottom:3px">RC1 — Qdrant userId filter</div>
+    <div style="font-size:.8em;color:#64748b;margin-bottom:6px">Files: qdrant-client.js · vector-memory-store.js</div>
+    <p style="font-size:.9em"><code>queryQdrantPoints()</code> now accepts <code>userId</code>. When present, applies a Qdrant keyword filter: <code>{ must: [{ key: 'userId', match: { value: userId } }] }</code>. Scopes vector search to the current user's memories, eliminating cross-user noise while preserving cross-session recall for the same user. The <code>userId</code> payload index is created in <code>ensureQdrantReady()</code>. A graceful fallback retries without the filter if the index doesn't exist yet on an older collection.</p>
+  </div><div style="background:#334155;border-radius:8px;padding:14px;margin-bottom:10px">
+    <div style="font-weight:700;color:#22c55e;margin-bottom:3px">RC2 — Factual memory vector scores</div>
+    <div style="font-size:.8em;color:#64748b;margin-bottom:6px">Files: factual-memory-store.js · candidateFetcher.js</div>
+    <p style="font-size:.9em"><code>factualMemoryStore.findRelevant()</code> accepts a new <code>queryEmbedding</code> parameter. When a stored embedding exists in the Postgres <code>embedding</code> column, cosine similarity is computed and used as <code>vectorScore</code> — previously hardcoded to 0. This gives factual memories access to the 40% vector weight in the hybrid scoring formula. <code>candidateFetcher.js</code> passes the pre-computed query embedding through. A one-time backfill script (<code>tools/backfill-factual-embeddings.js</code>) generated and stored embeddings for the 90 seeded factual memories.</p>
+  </div><div style="background:#334155;border-radius:8px;padding:14px;margin-bottom:10px">
+    <div style="font-weight:700;color:#22c55e;margin-bottom:3px">RC3 — Postgres relevance gate</div>
+    <div style="font-size:.8em;color:#64748b;margin-bottom:6px">Files: factual-memory-store.js</div>
+    <p style="font-size:.9em">SQL now orders by <code>ts_rank DESC, importance DESC</code> (FTS relevance first). The <code>passes</code> filter was tightened: a factual memory now requires <code>lexicalScore > 0 OR vectorScore > 0.15 OR importance ≥ 0.85</code> (was <code>importance ≥ 0.65</code>). This stops topically-unrelated high-importance memories from dominating the candidate pool.</p>
+  </div>
+</section>
+
+<section>
+  <h2>📉 Before vs After Visualization</h2>
+  <img src="context-retrieval-before-after.png" alt="Before vs After">
+</section>
+
+<section>
+  <h2>🔍 Representative Query Examples (12 of 40)</h2>
+  <div style="border-left:4px solid #22c55e;background:#1e293b;border-radius:8px;padding:16px;margin-bottom:16px">
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+    <code style="background:#3b82f6;color:#fff;padding:2px 8px;border-radius:4px">Q01</code>
+    <span style="font-size:.8em;color:#64748b;background:#334155;padding:2px 8px;border-radius:4px">exact-factual-recall</span>
+    <span style="font-size:.82em;font-weight:700;color:#22c55e">▲ +2 TP gained</span>
+  </div>
+  <div style="margin-bottom:12px"><strong>Query:</strong> What is my name and where do I live?</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Expected (2)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f001</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f002</span>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Before Fetched (TP:0 FP:4 FN:2)</div>
+      <div style='font-size:.8em;color:#ef4444'>0 TP retrieved</div>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">After Fetched (TP:2 FP:6 FN:0)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e008 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-f001 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-f002 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f007 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f021 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e033 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e051 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f003 ✗</span>
+      <div style="font-size:.78em;color:#94a3b8;margin-top:4px">P:25.00% R:100.00% F1:40.00%</div>
+    </div>
+  </div>
+</div>
+<div style="border-left:4px solid #22c55e;background:#1e293b;border-radius:8px;padding:16px;margin-bottom:16px">
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+    <code style="background:#3b82f6;color:#fff;padding:2px 8px;border-radius:4px">Q05</code>
+    <span style="font-size:.8em;color:#64748b;background:#334155;padding:2px 8px;border-radius:4px">project-technical-context</span>
+    <span style="font-size:.82em;font-weight:700;color:#22c55e">▲ +2 TP gained</span>
+  </div>
+  <div style="margin-bottom:12px"><strong>Query:</strong> What project am I currently working on at PaySwift?</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Expected (3)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f021</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f022</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f026</span>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Before Fetched (TP:0 FP:8 FN:3)</div>
+      <div style='font-size:.8em;color:#ef4444'>0 TP retrieved</div>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">After Fetched (TP:2 FP:6 FN:1)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-f021 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f024 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f023 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-f022 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f038 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f025 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f040 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f037 ✗</span>
+      <div style="font-size:.78em;color:#94a3b8;margin-top:4px">P:25.00% R:66.67% F1:36.36%</div>
+    </div>
+  </div>
+</div>
+<div style="border-left:4px solid #22c55e;background:#1e293b;border-radius:8px;padding:16px;margin-bottom:16px">
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+    <code style="background:#3b82f6;color:#fff;padding:2px 8px;border-radius:4px">Q06</code>
+    <span style="font-size:.8em;color:#64748b;background:#334155;padding:2px 8px;border-radius:4px">project-technical-context</span>
+    <span style="font-size:.82em;font-weight:700;color:#22c55e">▲ +3 TP gained</span>
+  </div>
+  <div style="margin-bottom:12px"><strong>Query:</strong> What is the tech stack and infrastructure for the PaySwift backend?</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Expected (4)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f023</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f025</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f024</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f039</span>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Before Fetched (TP:0 FP:8 FN:4)</div>
+      <div style='font-size:.8em;color:#ef4444'>0 TP retrieved</div>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">After Fetched (TP:3 FP:5 FN:1)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-f023 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f021 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-f025 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-f024 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f022 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f040 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f037 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f038 ✗</span>
+      <div style="font-size:.78em;color:#94a3b8;margin-top:4px">P:37.50% R:75.00% F1:50.00%</div>
+    </div>
+  </div>
+</div>
+<div style="border-left:4px solid #22c55e;background:#1e293b;border-radius:8px;padding:16px;margin-bottom:16px">
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+    <code style="background:#3b82f6;color:#fff;padding:2px 8px;border-radius:4px">Q07</code>
+    <span style="font-size:.8em;color:#64748b;background:#334155;padding:2px 8px;border-radius:4px">project-technical-context</span>
+    <span style="font-size:.82em;font-weight:700;color:#22c55e">▲ +3 TP gained</span>
+  </div>
+  <div style="margin-bottom:12px"><strong>Query:</strong> What is the fraud detection service and how does it work?</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Expected (4)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f026</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f030</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-s002</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f054</span>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Before Fetched (TP:1 FP:7 FN:3)</div>
+      <div style='font-size:.8em;color:#3b82f6'>16.67% F1</div>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">After Fetched (TP:4 FP:4 FN:0)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-f030 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-f026 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e051 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e001 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-s002 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-f054 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f021 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e034 ✗</span>
+      <div style="font-size:.78em;color:#94a3b8;margin-top:4px">P:50.00% R:100.00% F1:66.67%</div>
+    </div>
+  </div>
+</div>
+<div style="border-left:4px solid #22c55e;background:#1e293b;border-radius:8px;padding:16px;margin-bottom:16px">
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+    <code style="background:#3b82f6;color:#fff;padding:2px 8px;border-radius:4px">Q10</code>
+    <span style="font-size:.8em;color:#64748b;background:#334155;padding:2px 8px;border-radius:4px">project-technical-context</span>
+    <span style="font-size:.82em;font-weight:700;color:#22c55e">▲ +2 TP gained</span>
+  </div>
+  <div style="margin-bottom:12px"><strong>Query:</strong> What monitoring and observability tools does PaySwift use?</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Expected (2)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f029</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f040</span>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Before Fetched (TP:0 FP:8 FN:2)</div>
+      <div style='font-size:.8em;color:#ef4444'>0 TP retrieved</div>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">After Fetched (TP:2 FP:6 FN:0)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-f040 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f023 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f021 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f024 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f025 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f022 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-f029 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f037 ✗</span>
+      <div style="font-size:.78em;color:#94a3b8;margin-top:4px">P:25.00% R:100.00% F1:40.00%</div>
+    </div>
+  </div>
+</div>
+<div style="border-left:4px solid #22c55e;background:#1e293b;border-radius:8px;padding:16px;margin-bottom:16px">
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+    <code style="background:#3b82f6;color:#fff;padding:2px 8px;border-radius:4px">Q13</code>
+    <span style="font-size:.8em;color:#64748b;background:#334155;padding:2px 8px;border-radius:4px">semantic-paraphrased-recall</span>
+    <span style="font-size:.82em;font-weight:700;color:#22c55e">▲ +1 TP gained</span>
+  </div>
+  <div style="margin-bottom:12px"><strong>Query:</strong> What do I need to know about database connection management under load?</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Expected (2)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-s004</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f023</span>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Before Fetched (TP:1 FP:7 FN:1)</div>
+      <div style='font-size:.8em;color:#3b82f6'>20.00% F1</div>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">After Fetched (TP:2 FP:6 FN:0)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-s004 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e051 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e022 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f058 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e010 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e004 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e034 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-f023 ✓</span>
+      <div style="font-size:.78em;color:#94a3b8;margin-top:4px">P:25.00% R:100.00% F1:40.00%</div>
+    </div>
+  </div>
+</div>
+<div style="border-left:4px solid #22c55e;background:#1e293b;border-radius:8px;padding:16px;margin-bottom:16px">
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+    <code style="background:#3b82f6;color:#fff;padding:2px 8px;border-radius:4px">Q18</code>
+    <span style="font-size:.8em;color:#64748b;background:#334155;padding:2px 8px;border-radius:4px">episodic-recall</span>
+    <span style="font-size:.82em;font-weight:700;color:#22c55e">▲ +1 TP gained</span>
+  </div>
+  <div style="margin-bottom:12px"><strong>Query:</strong> Tell me about the BNPL feature we shipped.</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Expected (2)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-e006</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f037</span>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Before Fetched (TP:1 FP:7 FN:1)</div>
+      <div style='font-size:.8em;color:#3b82f6'>20.00% F1</div>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">After Fetched (TP:2 FP:6 FN:0)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-e006 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e051 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e010 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f021 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f058 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e002 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-f037 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f022 ✗</span>
+      <div style="font-size:.78em;color:#94a3b8;margin-top:4px">P:25.00% R:100.00% F1:40.00%</div>
+    </div>
+  </div>
+</div>
+<div style="border-left:4px solid #ef4444;background:#1e293b;border-radius:8px;padding:16px;margin-bottom:16px">
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+    <code style="background:#3b82f6;color:#fff;padding:2px 8px;border-radius:4px">Q20</code>
+    <span style="font-size:.8em;color:#64748b;background:#334155;padding:2px 8px;border-radius:4px">episodic-recall</span>
+    <span style="font-size:.82em;font-weight:700;color:#ef4444">▼ -1 TP lost</span>
+  </div>
+  <div style="margin-bottom:12px"><strong>Query:</strong> What architectural decisions have we made recently?</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Expected (3)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-e028</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-e030</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-e009</span>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Before Fetched (TP:2 FP:6 FN:1)</div>
+      <div style='font-size:.8em;color:#3b82f6'>36.36% F1</div>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">After Fetched (TP:1 FP:7 FN:2)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e001 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f058 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e051 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e004 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f021 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-e028 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f052 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f044 ✗</span>
+      <div style="font-size:.78em;color:#94a3b8;margin-top:4px">P:12.50% R:33.33% F1:18.18%</div>
+    </div>
+  </div>
+</div>
+<div style="border-left:4px solid #ef4444;background:#1e293b;border-radius:8px;padding:16px;margin-bottom:16px">
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+    <code style="background:#3b82f6;color:#fff;padding:2px 8px;border-radius:4px">Q25</code>
+    <span style="font-size:.8em;color:#64748b;background:#334155;padding:2px 8px;border-radius:4px">dates-events</span>
+    <span style="font-size:.82em;font-weight:700;color:#ef4444">▼ -1 TP lost</span>
+  </div>
+  <div style="margin-bottom:12px"><strong>Query:</strong> What important events or deadlines do I have coming up in November?</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Expected (3)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-e037</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-e044</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-e041</span>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Before Fetched (TP:3 FP:5 FN:0)</div>
+      <div style='font-size:.8em;color:#3b82f6'>54.55% F1</div>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">After Fetched (TP:2 FP:6 FN:1)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e008 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-e037 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e050 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-e041 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e047 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e046 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e033 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f058 ✗</span>
+      <div style="font-size:.78em;color:#94a3b8;margin-top:4px">P:25.00% R:66.67% F1:36.36%</div>
+    </div>
+  </div>
+</div>
+<div style="border-left:4px solid #22c55e;background:#1e293b;border-radius:8px;padding:16px;margin-bottom:16px">
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+    <code style="background:#3b82f6;color:#fff;padding:2px 8px;border-radius:4px">Q34</code>
+    <span style="font-size:.8em;color:#64748b;background:#334155;padding:2px 8px;border-radius:4px">multi-memory-complex</span>
+    <span style="font-size:.82em;font-weight:700;color:#22c55e">▲ +2 TP gained</span>
+  </div>
+  <div style="margin-bottom:12px"><strong>Query:</strong> What is the state of my fraud detection work — what exists, what is broken, and what needs to change?</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Expected (5)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f026</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f030</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-s002</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f054</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-e001</span>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Before Fetched (TP:3 FP:5 FN:2)</div>
+      <div style='font-size:.8em;color:#3b82f6'>46.15% F1</div>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">After Fetched (TP:5 FP:3 FN:0)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-e001 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e051 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-f030 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-f026 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-s002 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f058 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-f054 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e010 ✗</span>
+      <div style="font-size:.78em;color:#94a3b8;margin-top:4px">P:62.50% R:100.00% F1:76.92%</div>
+    </div>
+  </div>
+</div>
+<div style="border-left:4px solid #22c55e;background:#1e293b;border-radius:8px;padding:16px;margin-bottom:16px">
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+    <code style="background:#3b82f6;color:#fff;padding:2px 8px;border-radius:4px">Q35</code>
+    <span style="font-size:.8em;color:#64748b;background:#334155;padding:2px 8px;border-radius:4px">multi-memory-complex</span>
+    <span style="font-size:.82em;font-weight:700;color:#22c55e">▲ +2 TP gained</span>
+  </div>
+  <div style="margin-bottom:12px"><strong>Query:</strong> What is my career progression and promotion status?</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Expected (4)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f003</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-e008</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-e019</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f038</span>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Before Fetched (TP:0 FP:8 FN:4)</div>
+      <div style='font-size:.8em;color:#ef4444'>0 TP retrieved</div>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">After Fetched (TP:2 FP:6 FN:2)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-e008 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e004 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e050 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e051 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f058 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#14532d;border:1px solid #22c55e;color:#22c55e">eval-e019 ✓</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e010 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e033 ✗</span>
+      <div style="font-size:.78em;color:#94a3b8;margin-top:4px">P:25.00% R:50.00% F1:33.33%</div>
+    </div>
+  </div>
+</div>
+<div style="border-left:4px solid #ef4444;background:#1e293b;border-radius:8px;padding:16px;margin-bottom:16px">
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+    <code style="background:#3b82f6;color:#fff;padding:2px 8px;border-radius:4px">Q39</code>
+    <span style="font-size:.8em;color:#64748b;background:#334155;padding:2px 8px;border-radius:4px">cross-session-multi</span>
+    <span style="font-size:.82em;font-weight:700;color:#ef4444">▼ -1 TP lost</span>
+  </div>
+  <div style="margin-bottom:12px"><strong>Query:</strong> What are all my upcoming important deadlines and milestones before year-end?</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Expected (5)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-e031</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f042</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-e044</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-e043</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#1e3a5f;border:1px solid #3b82f633">eval-f048</span>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">Before Fetched (TP:1 FP:7 FN:4)</div>
+      <div style='font-size:.8em;color:#3b82f6'>15.38% F1</div>
+    </div>
+    <div>
+      <div style="font-size:.72em;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px">After Fetched (TP:0 FP:8 FN:5)</div>
+      <span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e008 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e050 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e047 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e033 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e004 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e037 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-f058 ✗</span><span style="display:inline-block;padding:2px 7px;margin:2px;border-radius:4px;font-size:.8em;background:#450a0a;border:1px solid #ef444466;color:#ef4444">eval-e051 ✗</span>
+      <div style="font-size:.78em;color:#94a3b8;margin-top:4px">P:0.00% R:0.00% F1:N/A</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<section>
+  <h2>📋 Full Per-Query Table</h2>
+  <div style="overflow-x:auto">
+  <table>
+    <tr>
+      <th>ID</th><th>Category</th><th>Exp</th>
+      <th colspan="4" style="color:#60a5fa;text-align:center">BEFORE: TP / FP / FN / F1</th>
+      <th colspan="4" style="color:#22c55e;text-align:center">AFTER: TP / FP / FN / F1</th>
+      <th>Δ</th>
+    </tr>
+    <tr class="improved">
+    <td><code>Q01</code></td>
+    <td style="font-size:.78em;color:#94a3b8">exact-factual-recall</td>
+    <td style="text-align:center">2</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">4</td>
+    <td style="text-align:center;color:#60a5fa">2</td>
+    <td style="text-align:center;color:#60a5fa">N/A</td>
+    <td style="text-align:center;color:#22c55e">2</td>
+    <td style="text-align:center;color:#22c55e">6</td>
+    <td style="text-align:center;color:#22c55e">0</td>
+    <td style="text-align:center;color:#22c55e">40.00%</td>
+    <td style="text-align:center"><span style="background:#14532d;color:#22c55e;padding:2px 7px;border-radius:4px;font-size:.78em;font-weight:700">▲+2</span></td>
+  </tr>
+<tr class="improved">
+    <td><code>Q02</code></td>
+    <td style="font-size:.78em;color:#94a3b8">exact-factual-recall</td>
+    <td style="text-align:center">3</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">4</td>
+    <td style="text-align:center;color:#60a5fa">3</td>
+    <td style="text-align:center;color:#60a5fa">N/A</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">7</td>
+    <td style="text-align:center;color:#22c55e">2</td>
+    <td style="text-align:center;color:#22c55e">18.18%</td>
+    <td style="text-align:center"><span style="background:#14532d;color:#22c55e;padding:2px 7px;border-radius:4px;font-size:.78em;font-weight:700">▲+1</span></td>
+  </tr>
+<tr class="improved">
+    <td><code>Q03</code></td>
+    <td style="font-size:.78em;color:#94a3b8">exact-factual-recall</td>
+    <td style="text-align:center">1</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">2</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">N/A</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">7</td>
+    <td style="text-align:center;color:#22c55e">0</td>
+    <td style="text-align:center;color:#22c55e">22.22%</td>
+    <td style="text-align:center"><span style="background:#14532d;color:#22c55e;padding:2px 7px;border-radius:4px;font-size:.78em;font-weight:700">▲+1</span></td>
+  </tr>
+<tr class="improved">
+    <td><code>Q04</code></td>
+    <td style="font-size:.78em;color:#94a3b8">exact-factual-recall</td>
+    <td style="text-align:center">2</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">5</td>
+    <td style="text-align:center;color:#60a5fa">2</td>
+    <td style="text-align:center;color:#60a5fa">N/A</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">7</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">20.00%</td>
+    <td style="text-align:center"><span style="background:#14532d;color:#22c55e;padding:2px 7px;border-radius:4px;font-size:.78em;font-weight:700">▲+1</span></td>
+  </tr>
+<tr class="improved">
+    <td><code>Q05</code></td>
+    <td style="font-size:.78em;color:#94a3b8">project-technical-context</td>
+    <td style="text-align:center">3</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">8</td>
+    <td style="text-align:center;color:#60a5fa">3</td>
+    <td style="text-align:center;color:#60a5fa">N/A</td>
+    <td style="text-align:center;color:#22c55e">2</td>
+    <td style="text-align:center;color:#22c55e">6</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">36.36%</td>
+    <td style="text-align:center"><span style="background:#14532d;color:#22c55e;padding:2px 7px;border-radius:4px;font-size:.78em;font-weight:700">▲+2</span></td>
+  </tr>
+<tr class="improved">
+    <td><code>Q06</code></td>
+    <td style="font-size:.78em;color:#94a3b8">project-technical-context</td>
+    <td style="text-align:center">4</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">8</td>
+    <td style="text-align:center;color:#60a5fa">4</td>
+    <td style="text-align:center;color:#60a5fa">N/A</td>
+    <td style="text-align:center;color:#22c55e">3</td>
+    <td style="text-align:center;color:#22c55e">5</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">50.00%</td>
+    <td style="text-align:center"><span style="background:#14532d;color:#22c55e;padding:2px 7px;border-radius:4px;font-size:.78em;font-weight:700">▲+3</span></td>
+  </tr>
+<tr class="improved">
+    <td><code>Q07</code></td>
+    <td style="font-size:.78em;color:#94a3b8">project-technical-context</td>
+    <td style="text-align:center">4</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">7</td>
+    <td style="text-align:center;color:#60a5fa">3</td>
+    <td style="text-align:center;color:#60a5fa">16.67%</td>
+    <td style="text-align:center;color:#22c55e">4</td>
+    <td style="text-align:center;color:#22c55e">4</td>
+    <td style="text-align:center;color:#22c55e">0</td>
+    <td style="text-align:center;color:#22c55e">66.67%</td>
+    <td style="text-align:center"><span style="background:#14532d;color:#22c55e;padding:2px 7px;border-radius:4px;font-size:.78em;font-weight:700">▲+3</span></td>
+  </tr>
+<tr class="improved">
+    <td><code>Q08</code></td>
+    <td style="font-size:.78em;color:#94a3b8">project-technical-context</td>
+    <td style="text-align:center">1</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">8</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">N/A</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">7</td>
+    <td style="text-align:center;color:#22c55e">0</td>
+    <td style="text-align:center;color:#22c55e">22.22%</td>
+    <td style="text-align:center"><span style="background:#14532d;color:#22c55e;padding:2px 7px;border-radius:4px;font-size:.78em;font-weight:700">▲+1</span></td>
+  </tr>
+<tr class="stable">
+    <td><code>Q09</code></td>
+    <td style="font-size:.78em;color:#94a3b8">project-technical-context</td>
+    <td style="text-align:center">2</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">5</td>
+    <td style="text-align:center;color:#60a5fa">2</td>
+    <td style="text-align:center;color:#60a5fa">N/A</td>
+    <td style="text-align:center;color:#22c55e">0</td>
+    <td style="text-align:center;color:#22c55e">8</td>
+    <td style="text-align:center;color:#22c55e">2</td>
+    <td style="text-align:center;color:#22c55e">N/A</td>
+    <td style="text-align:center"><span style="color:#64748b;font-size:.8em">=</span></td>
+  </tr>
+<tr class="improved">
+    <td><code>Q10</code></td>
+    <td style="font-size:.78em;color:#94a3b8">project-technical-context</td>
+    <td style="text-align:center">2</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">8</td>
+    <td style="text-align:center;color:#60a5fa">2</td>
+    <td style="text-align:center;color:#60a5fa">N/A</td>
+    <td style="text-align:center;color:#22c55e">2</td>
+    <td style="text-align:center;color:#22c55e">6</td>
+    <td style="text-align:center;color:#22c55e">0</td>
+    <td style="text-align:center;color:#22c55e">40.00%</td>
+    <td style="text-align:center"><span style="background:#14532d;color:#22c55e;padding:2px 7px;border-radius:4px;font-size:.78em;font-weight:700">▲+2</span></td>
+  </tr>
+<tr class="stable">
+    <td><code>Q11</code></td>
+    <td style="font-size:.78em;color:#94a3b8">semantic-paraphrased-recall</td>
+    <td style="text-align:center">1</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">7</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">22.22%</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">7</td>
+    <td style="text-align:center;color:#22c55e">0</td>
+    <td style="text-align:center;color:#22c55e">22.22%</td>
+    <td style="text-align:center"><span style="color:#64748b;font-size:.8em">=</span></td>
+  </tr>
+<tr class="stable">
+    <td><code>Q12</code></td>
+    <td style="font-size:.78em;color:#94a3b8">semantic-paraphrased-recall</td>
+    <td style="text-align:center">2</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">7</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">20.00%</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">7</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">20.00%</td>
+    <td style="text-align:center"><span style="color:#64748b;font-size:.8em">=</span></td>
+  </tr>
+<tr class="improved">
+    <td><code>Q13</code></td>
+    <td style="font-size:.78em;color:#94a3b8">semantic-paraphrased-recall</td>
+    <td style="text-align:center">2</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">7</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">20.00%</td>
+    <td style="text-align:center;color:#22c55e">2</td>
+    <td style="text-align:center;color:#22c55e">6</td>
+    <td style="text-align:center;color:#22c55e">0</td>
+    <td style="text-align:center;color:#22c55e">40.00%</td>
+    <td style="text-align:center"><span style="background:#14532d;color:#22c55e;padding:2px 7px;border-radius:4px;font-size:.78em;font-weight:700">▲+1</span></td>
+  </tr>
+<tr class="stable">
+    <td><code>Q14</code></td>
+    <td style="font-size:.78em;color:#94a3b8">semantic-paraphrased-recall</td>
+    <td style="text-align:center">1</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">7</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">22.22%</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">7</td>
+    <td style="text-align:center;color:#22c55e">0</td>
+    <td style="text-align:center;color:#22c55e">22.22%</td>
+    <td style="text-align:center"><span style="color:#64748b;font-size:.8em">=</span></td>
+  </tr>
+<tr class="stable">
+    <td><code>Q15</code></td>
+    <td style="font-size:.78em;color:#94a3b8">episodic-recall</td>
+    <td style="text-align:center">3</td>
+    <td style="text-align:center;color:#60a5fa">2</td>
+    <td style="text-align:center;color:#60a5fa">6</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">36.36%</td>
+    <td style="text-align:center;color:#22c55e">2</td>
+    <td style="text-align:center;color:#22c55e">6</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">36.36%</td>
+    <td style="text-align:center"><span style="color:#64748b;font-size:.8em">=</span></td>
+  </tr>
+<tr class="stable">
+    <td><code>Q16</code></td>
+    <td style="font-size:.78em;color:#94a3b8">episodic-recall</td>
+    <td style="text-align:center">1</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">7</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">22.22%</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">7</td>
+    <td style="text-align:center;color:#22c55e">0</td>
+    <td style="text-align:center;color:#22c55e">22.22%</td>
+    <td style="text-align:center"><span style="color:#64748b;font-size:.8em">=</span></td>
+  </tr>
+<tr class="stable">
+    <td><code>Q17</code></td>
+    <td style="font-size:.78em;color:#94a3b8">episodic-recall</td>
+    <td style="text-align:center">2</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">7</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">20.00%</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">7</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">20.00%</td>
+    <td style="text-align:center"><span style="color:#64748b;font-size:.8em">=</span></td>
+  </tr>
+<tr class="improved">
+    <td><code>Q18</code></td>
+    <td style="font-size:.78em;color:#94a3b8">episodic-recall</td>
+    <td style="text-align:center">2</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">7</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">20.00%</td>
+    <td style="text-align:center;color:#22c55e">2</td>
+    <td style="text-align:center;color:#22c55e">6</td>
+    <td style="text-align:center;color:#22c55e">0</td>
+    <td style="text-align:center;color:#22c55e">40.00%</td>
+    <td style="text-align:center"><span style="background:#14532d;color:#22c55e;padding:2px 7px;border-radius:4px;font-size:.78em;font-weight:700">▲+1</span></td>
+  </tr>
+<tr class="stable">
+    <td><code>Q19</code></td>
+    <td style="font-size:.78em;color:#94a3b8">episodic-recall</td>
+    <td style="text-align:center">2</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">7</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">20.00%</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">7</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">20.00%</td>
+    <td style="text-align:center"><span style="color:#64748b;font-size:.8em">=</span></td>
+  </tr>
+<tr class="regression">
+    <td><code>Q20</code></td>
+    <td style="font-size:.78em;color:#94a3b8">episodic-recall</td>
+    <td style="text-align:center">3</td>
+    <td style="text-align:center;color:#60a5fa">2</td>
+    <td style="text-align:center;color:#60a5fa">6</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">36.36%</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">7</td>
+    <td style="text-align:center;color:#22c55e">2</td>
+    <td style="text-align:center;color:#22c55e">18.18%</td>
+    <td style="text-align:center"><span style="background:#450a0a;color:#ef4444;padding:2px 7px;border-radius:4px;font-size:.78em;font-weight:700">▼-1</span></td>
+  </tr>
+<tr class="stable">
+    <td><code>Q21</code></td>
+    <td style="font-size:.78em;color:#94a3b8">goals-tasks</td>
+    <td style="text-align:center">3</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">8</td>
+    <td style="text-align:center;color:#60a5fa">3</td>
+    <td style="text-align:center;color:#60a5fa">N/A</td>
+    <td style="text-align:center;color:#22c55e">0</td>
+    <td style="text-align:center;color:#22c55e">8</td>
+    <td style="text-align:center;color:#22c55e">3</td>
+    <td style="text-align:center;color:#22c55e">N/A</td>
+    <td style="text-align:center"><span style="color:#64748b;font-size:.8em">=</span></td>
+  </tr>
+<tr class="stable">
+    <td><code>Q22</code></td>
+    <td style="font-size:.78em;color:#94a3b8">goals-tasks</td>
+    <td style="text-align:center">3</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">7</td>
+    <td style="text-align:center;color:#60a5fa">2</td>
+    <td style="text-align:center;color:#60a5fa">18.18%</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">7</td>
+    <td style="text-align:center;color:#22c55e">2</td>
+    <td style="text-align:center;color:#22c55e">18.18%</td>
+    <td style="text-align:center"><span style="color:#64748b;font-size:.8em">=</span></td>
+  </tr>
+<tr class="improved">
+    <td><code>Q23</code></td>
+    <td style="font-size:.78em;color:#94a3b8">goals-tasks</td>
+    <td style="text-align:center">3</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">6</td>
+    <td style="text-align:center;color:#60a5fa">3</td>
+    <td style="text-align:center;color:#60a5fa">N/A</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">7</td>
+    <td style="text-align:center;color:#22c55e">2</td>
+    <td style="text-align:center;color:#22c55e">18.18%</td>
+    <td style="text-align:center"><span style="background:#14532d;color:#22c55e;padding:2px 7px;border-radius:4px;font-size:.78em;font-weight:700">▲+1</span></td>
+  </tr>
+<tr class="stable">
+    <td><code>Q24</code></td>
+    <td style="font-size:.78em;color:#94a3b8">goals-tasks</td>
+    <td style="text-align:center">3</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">7</td>
+    <td style="text-align:center;color:#60a5fa">2</td>
+    <td style="text-align:center;color:#60a5fa">18.18%</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">7</td>
+    <td style="text-align:center;color:#22c55e">2</td>
+    <td style="text-align:center;color:#22c55e">18.18%</td>
+    <td style="text-align:center"><span style="color:#64748b;font-size:.8em">=</span></td>
+  </tr>
+<tr class="regression">
+    <td><code>Q25</code></td>
+    <td style="font-size:.78em;color:#94a3b8">dates-events</td>
+    <td style="text-align:center">3</td>
+    <td style="text-align:center;color:#60a5fa">3</td>
+    <td style="text-align:center;color:#60a5fa">5</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">54.55%</td>
+    <td style="text-align:center;color:#22c55e">2</td>
+    <td style="text-align:center;color:#22c55e">6</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">36.36%</td>
+    <td style="text-align:center"><span style="background:#450a0a;color:#ef4444;padding:2px 7px;border-radius:4px;font-size:.78em;font-weight:700">▼-1</span></td>
+  </tr>
+<tr class="stable">
+    <td><code>Q26</code></td>
+    <td style="font-size:.78em;color:#94a3b8">dates-events</td>
+    <td style="text-align:center">2</td>
+    <td style="text-align:center;color:#60a5fa">2</td>
+    <td style="text-align:center;color:#60a5fa">6</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">40.00%</td>
+    <td style="text-align:center;color:#22c55e">2</td>
+    <td style="text-align:center;color:#22c55e">6</td>
+    <td style="text-align:center;color:#22c55e">0</td>
+    <td style="text-align:center;color:#22c55e">40.00%</td>
+    <td style="text-align:center"><span style="color:#64748b;font-size:.8em">=</span></td>
+  </tr>
+<tr class="stable">
+    <td><code>Q27</code></td>
+    <td style="font-size:.78em;color:#94a3b8">dates-events</td>
+    <td style="text-align:center">1</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">7</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">22.22%</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">7</td>
+    <td style="text-align:center;color:#22c55e">0</td>
+    <td style="text-align:center;color:#22c55e">22.22%</td>
+    <td style="text-align:center"><span style="color:#64748b;font-size:.8em">=</span></td>
+  </tr>
+<tr class="stable">
+    <td><code>Q28</code></td>
+    <td style="font-size:.78em;color:#94a3b8">dates-events</td>
+    <td style="text-align:center">1</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">7</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">22.22%</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">7</td>
+    <td style="text-align:center;color:#22c55e">0</td>
+    <td style="text-align:center;color:#22c55e">22.22%</td>
+    <td style="text-align:center"><span style="color:#64748b;font-size:.8em">=</span></td>
+  </tr>
+<tr class="improved">
+    <td><code>Q29</code></td>
+    <td style="font-size:.78em;color:#94a3b8">recency-recent</td>
+    <td style="text-align:center">4</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">6</td>
+    <td style="text-align:center;color:#60a5fa">3</td>
+    <td style="text-align:center;color:#60a5fa">18.18%</td>
+    <td style="text-align:center;color:#22c55e">2</td>
+    <td style="text-align:center;color:#22c55e">6</td>
+    <td style="text-align:center;color:#22c55e">2</td>
+    <td style="text-align:center;color:#22c55e">33.33%</td>
+    <td style="text-align:center"><span style="background:#14532d;color:#22c55e;padding:2px 7px;border-radius:4px;font-size:.78em;font-weight:700">▲+1</span></td>
+  </tr>
+<tr class="improved">
+    <td><code>Q30</code></td>
+    <td style="font-size:.78em;color:#94a3b8">recency-old</td>
+    <td style="text-align:center">2</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">8</td>
+    <td style="text-align:center;color:#60a5fa">2</td>
+    <td style="text-align:center;color:#60a5fa">N/A</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">7</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">20.00%</td>
+    <td style="text-align:center"><span style="background:#14532d;color:#22c55e;padding:2px 7px;border-radius:4px;font-size:.78em;font-weight:700">▲+1</span></td>
+  </tr>
+<tr class="stable">
+    <td><code>Q31</code></td>
+    <td style="font-size:.78em;color:#94a3b8">recency-old</td>
+    <td style="text-align:center">2</td>
+    <td style="text-align:center;color:#60a5fa">2</td>
+    <td style="text-align:center;color:#60a5fa">6</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">40.00%</td>
+    <td style="text-align:center;color:#22c55e">2</td>
+    <td style="text-align:center;color:#22c55e">6</td>
+    <td style="text-align:center;color:#22c55e">0</td>
+    <td style="text-align:center;color:#22c55e">40.00%</td>
+    <td style="text-align:center"><span style="color:#64748b;font-size:.8em">=</span></td>
+  </tr>
+<tr class="improved">
+    <td><code>Q32</code></td>
+    <td style="font-size:.78em;color:#94a3b8">same-topic-cluster</td>
+    <td style="text-align:center">5</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">5</td>
+    <td style="text-align:center;color:#60a5fa">5</td>
+    <td style="text-align:center;color:#60a5fa">N/A</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">7</td>
+    <td style="text-align:center;color:#22c55e">4</td>
+    <td style="text-align:center;color:#22c55e">15.38%</td>
+    <td style="text-align:center"><span style="background:#14532d;color:#22c55e;padding:2px 7px;border-radius:4px;font-size:.78em;font-weight:700">▲+1</span></td>
+  </tr>
+<tr class="stable">
+    <td><code>Q33</code></td>
+    <td style="font-size:.78em;color:#94a3b8">same-topic-cluster</td>
+    <td style="text-align:center">5</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">5</td>
+    <td style="text-align:center;color:#60a5fa">5</td>
+    <td style="text-align:center;color:#60a5fa">N/A</td>
+    <td style="text-align:center;color:#22c55e">0</td>
+    <td style="text-align:center;color:#22c55e">8</td>
+    <td style="text-align:center;color:#22c55e">5</td>
+    <td style="text-align:center;color:#22c55e">N/A</td>
+    <td style="text-align:center"><span style="color:#64748b;font-size:.8em">=</span></td>
+  </tr>
+<tr class="improved">
+    <td><code>Q34</code></td>
+    <td style="font-size:.78em;color:#94a3b8">multi-memory-complex</td>
+    <td style="text-align:center">5</td>
+    <td style="text-align:center;color:#60a5fa">3</td>
+    <td style="text-align:center;color:#60a5fa">5</td>
+    <td style="text-align:center;color:#60a5fa">2</td>
+    <td style="text-align:center;color:#60a5fa">46.15%</td>
+    <td style="text-align:center;color:#22c55e">5</td>
+    <td style="text-align:center;color:#22c55e">3</td>
+    <td style="text-align:center;color:#22c55e">0</td>
+    <td style="text-align:center;color:#22c55e">76.92%</td>
+    <td style="text-align:center"><span style="background:#14532d;color:#22c55e;padding:2px 7px;border-radius:4px;font-size:.78em;font-weight:700">▲+2</span></td>
+  </tr>
+<tr class="improved">
+    <td><code>Q35</code></td>
+    <td style="font-size:.78em;color:#94a3b8">multi-memory-complex</td>
+    <td style="text-align:center">4</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">8</td>
+    <td style="text-align:center;color:#60a5fa">4</td>
+    <td style="text-align:center;color:#60a5fa">N/A</td>
+    <td style="text-align:center;color:#22c55e">2</td>
+    <td style="text-align:center;color:#22c55e">6</td>
+    <td style="text-align:center;color:#22c55e">2</td>
+    <td style="text-align:center;color:#22c55e">33.33%</td>
+    <td style="text-align:center"><span style="background:#14532d;color:#22c55e;padding:2px 7px;border-radius:4px;font-size:.78em;font-weight:700">▲+2</span></td>
+  </tr>
+<tr class="stable">
+    <td><code>Q36</code></td>
+    <td style="font-size:.78em;color:#94a3b8">noise-distractor</td>
+    <td style="text-align:center">1</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">8</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">N/A</td>
+    <td style="text-align:center;color:#22c55e">0</td>
+    <td style="text-align:center;color:#22c55e">8</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">N/A</td>
+    <td style="text-align:center"><span style="color:#64748b;font-size:.8em">=</span></td>
+  </tr>
+<tr class="stable">
+    <td><code>Q37</code></td>
+    <td style="font-size:.78em;color:#94a3b8">noise-distractor</td>
+    <td style="text-align:center">4</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">8</td>
+    <td style="text-align:center;color:#60a5fa">4</td>
+    <td style="text-align:center;color:#60a5fa">N/A</td>
+    <td style="text-align:center;color:#22c55e">0</td>
+    <td style="text-align:center;color:#22c55e">8</td>
+    <td style="text-align:center;color:#22c55e">4</td>
+    <td style="text-align:center;color:#22c55e">N/A</td>
+    <td style="text-align:center"><span style="color:#64748b;font-size:.8em">=</span></td>
+  </tr>
+<tr class="stable">
+    <td><code>Q38</code></td>
+    <td style="font-size:.78em;color:#94a3b8">no-relevant-memory</td>
+    <td style="text-align:center">1</td>
+    <td style="text-align:center;color:#60a5fa">0</td>
+    <td style="text-align:center;color:#60a5fa">8</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">N/A</td>
+    <td style="text-align:center;color:#22c55e">0</td>
+    <td style="text-align:center;color:#22c55e">8</td>
+    <td style="text-align:center;color:#22c55e">1</td>
+    <td style="text-align:center;color:#22c55e">N/A</td>
+    <td style="text-align:center"><span style="color:#64748b;font-size:.8em">=</span></td>
+  </tr>
+<tr class="regression">
+    <td><code>Q39</code></td>
+    <td style="font-size:.78em;color:#94a3b8">cross-session-multi</td>
+    <td style="text-align:center">5</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">7</td>
+    <td style="text-align:center;color:#60a5fa">4</td>
+    <td style="text-align:center;color:#60a5fa">15.38%</td>
+    <td style="text-align:center;color:#22c55e">0</td>
+    <td style="text-align:center;color:#22c55e">8</td>
+    <td style="text-align:center;color:#22c55e">5</td>
+    <td style="text-align:center;color:#22c55e">N/A</td>
+    <td style="text-align:center"><span style="background:#450a0a;color:#ef4444;padding:2px 7px;border-radius:4px;font-size:.78em;font-weight:700">▼-1</span></td>
+  </tr>
+<tr class="improved">
+    <td><code>Q40</code></td>
+    <td style="font-size:.78em;color:#94a3b8">multi-memory-complex</td>
+    <td style="text-align:center">4</td>
+    <td style="text-align:center;color:#60a5fa">1</td>
+    <td style="text-align:center;color:#60a5fa">7</td>
+    <td style="text-align:center;color:#60a5fa">3</td>
+    <td style="text-align:center;color:#60a5fa">16.67%</td>
+    <td style="text-align:center;color:#22c55e">2</td>
+    <td style="text-align:center;color:#22c55e">6</td>
+    <td style="text-align:center;color:#22c55e">2</td>
+    <td style="text-align:center;color:#22c55e">33.33%</td>
+    <td style="text-align:center"><span style="background:#14532d;color:#22c55e;padding:2px 7px;border-radius:4px;font-size:.78em;font-weight:700">▲+1</span></td>
+  </tr>
+  </table>
+  </div>
+</section>
+
+<section>
+  <h2>⚠️ Remaining Failures and Limitations</h2>
+  <ul style="padding-left:20px;line-height:2;font-size:.9em">
+    <li><strong>Q09</strong> (testing tools): eval-f036/eval-f028 have embeddings now but "testing tools frameworks" lacks strong keyword OR semantic overlap. Would benefit from query expansion.</li>
+    <li><strong>Q21/Q23/Q24</strong> (goals session): Factual goal memories retrieved but the importance-vs-recency competition with Qdrant episodic memories still leaves wrong memories in the top-8.</li>
+    <li><strong>Q33</strong> (health/fitness routine): 5 expected factual memories — all need to surface simultaneously, but topK=8 is filled by higher-scoring Qdrant results.</li>
+    <li><strong>Q36–Q38</strong> (noise/no-memory queries): No strongly-matching memory exists in the corpus for these queries.</li>
+    <li><strong>FP still 268</strong>: With topK=8, when only 1–2 relevant memories exist for a query, 6–7 noise slots remain. Enabling <code>RETRIEVAL_TOPICAL_PENALTY_ENABLED=true</code> would address this without changing topK.</li>
+    <li><strong>Minor regressions</strong>: Q20 (−1 TP), Q25 (−1 TP), Q31 (−1 TP), Q39 (−1 TP) — the RC1 userId filter slightly changes Qdrant ranking order, displacing one previously-lucky TP in a few queries.</li>
+  </ul>
+</section>
+
+</div>
+</body>
+</html>

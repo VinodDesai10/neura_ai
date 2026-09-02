@@ -1,0 +1,1696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Neura AI — Context Retrieval Evaluation Report</title>
+  <style>
+    :root {
+      --bg:       #0f172a;
+      --bg2:      #1e293b;
+      --bg3:      #334155;
+      --text:     #e2e8f0;
+      --muted:    #94a3b8;
+      --success:  #22c55e;
+      --warning:  #f59e0b;
+      --danger:   #ef4444;
+      --tp:       #22c55e;
+      --fp:       #ef4444;
+      --fn:       #f59e0b;
+      --blue:     #3b82f6;
+      --purple:   #a855f7;
+      --border:   #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; line-height: 1.6; }
+    h1, h2, h3, h4 { font-weight: 700; }
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.4rem; border-bottom: 2px solid var(--bg3); padding-bottom: 8px; margin-bottom: 16px; }
+    h3 { font-size: 1.1rem; color: var(--muted); margin-bottom: 12px; }
+    code { font-family: monospace; background: var(--bg3); padding: 2px 6px; border-radius: 4px; font-size: 0.85em; }
+    a { color: var(--blue); }
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+    section { margin-bottom: 40px; background: var(--bg2); border-radius: 12px; padding: 24px; }
+
+    /* Hero */
+    .hero { background: linear-gradient(135deg, #1e293b 0%, #0f172a 60%, #1e1b4b 100%); }
+    .hero-subtitle { color: var(--muted); margin: 8px 0 24px; }
+    .hero-meta { display: flex; gap: 24px; flex-wrap: wrap; }
+    .meta-item { background: var(--bg3); padding: 8px 16px; border-radius: 8px; font-size: 0.9em; }
+    .meta-item strong { color: var(--text); }
+
+    /* Score cards */
+    .score-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .score-card { background: var(--bg2); border: 2px solid var(--border); border-radius: 12px; padding: 20px; text-align: center; }
+    .score-card.precision { border-color: var(--blue); }
+    .score-card.recall    { border-color: var(--tp); }
+    .score-card.f1        { border-color: var(--warning); }
+    .score-card.macro     { border-color: var(--purple); }
+    .score-value { font-size: 2.5rem; font-weight: 800; font-family: monospace; }
+    .score-card.precision .score-value { color: var(--blue); }
+    .score-card.recall    .score-value { color: var(--tp); }
+    .score-card.f1        .score-value { color: var(--warning); }
+    .score-card.macro     .score-value { color: var(--purple); }
+    .score-label { font-size: 0.85rem; color: var(--muted); margin-top: 4px; }
+
+    /* Aggregate grid */
+    .agg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+    .agg-cell { background: var(--bg3); border-radius: 8px; padding: 12px 16px; }
+    .agg-cell .agg-val { font-size: 1.6rem; font-weight: 700; font-family: monospace; }
+    .agg-cell .agg-lbl { font-size: 0.8rem; color: var(--muted); }
+    .agg-cell.tp .agg-val { color: var(--tp); }
+    .agg-cell.fp .agg-val { color: var(--fp); }
+    .agg-cell.fn .agg-val { color: var(--fn); }
+
+    /* Verification badge */
+    .verify-badge { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 8px; font-weight: 700; font-size: 1rem; }
+    .verify-badge.pass { background: #14532d; color: var(--success); border: 2px solid var(--success); }
+    .verify-badge.fail { background: #450a0a; color: var(--danger);  border: 2px solid var(--danger); }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; font-size: 0.88em; }
+    th { background: var(--bg3); padding: 10px 12px; text-align: left; white-space: nowrap; }
+    td { padding: 8px 12px; border-bottom: 1px solid var(--bg3); vertical-align: top; }
+    .metric { text-align: center; font-family: monospace; white-space: nowrap; }
+    .query-text { max-width: 280px; }
+    .tp-count { color: var(--tp); font-weight: 700; }
+    .fp-count { color: var(--fp); font-weight: 700; }
+    .fn-count { color: var(--fn); font-weight: 700; }
+    .success { color: var(--success); }
+    .warning { color: var(--warning); }
+    .danger  { color: var(--danger);  }
+    .success-row { border-left: 3px solid var(--success); }
+    .warning-row { border-left: 3px solid var(--warning); }
+    .danger-row  { border-left: 3px solid var(--danger);  }
+    tr:hover { background: var(--bg3); }
+
+    /* Query detail cards */
+    .query-detail { background: var(--bg3); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+    .qd-header { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+    .qd-id  { font-family: monospace; background: var(--blue); color: #fff; padding: 3px 10px; border-radius: 5px; font-size: 0.85em; font-weight: 700; }
+    .qd-cat { background: var(--bg); padding: 3px 10px; border-radius: 5px; font-size: 0.8em; color: var(--muted); }
+    .qd-f1  { padding: 3px 10px; border-radius: 5px; font-weight: 700; font-size: 0.85em; }
+    .qd-f1.success { background: #14532d; color: var(--success); }
+    .qd-f1.warning { background: #451a03; color: var(--warning); }
+    .qd-f1.danger  { background: #450a0a; color: var(--danger); }
+    .qd-query { color: var(--text); margin-bottom: 14px; font-size: 0.95em; }
+    .qd-section { margin-bottom: 12px; }
+    .section-label { font-size: 0.78em; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+    .memory-pill { display: inline-block; padding: 4px 10px; border-radius: 6px; margin: 3px; font-size: 0.82em; }
+    .expected-pill { background: #1e3a5f; border: 1px solid #3b82f633; }
+    .tp-pill       { background: #14532d; border: 1px solid var(--success); color: var(--success); }
+    .fp-pill       { background: #450a0a; border: 1px solid var(--danger); color: var(--danger); }
+    .fn-pill       { background: #451a03; border: 1px solid var(--warning); color: var(--warning); }
+    .mem-summary   { display: block; font-size: 0.85em; color: var(--muted); margin-top: 2px; }
+    .reason        { font-size: 0.8em; color: var(--muted); margin-left: 6px; }
+    .empty         { color: var(--muted); font-style: italic; }
+    .qd-metrics-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0; }
+    .metric-badge  { padding: 3px 10px; border-radius: 5px; font-size: 0.78em; font-weight: 700; font-family: monospace; }
+    .metric-badge.tp   { background: #14532d; color: var(--tp); }
+    .metric-badge.fp   { background: #450a0a; color: var(--fp); }
+    .metric-badge.fn   { background: #451a03; color: var(--fn); }
+    .metric-badge.prec { background: #1e3a5f; color: var(--blue); }
+    .metric-badge.rec  { background: #14532d; color: var(--success); }
+    .metric-badge.f1   { background: #451a03; color: var(--warning); }
+    .qd-section.missed { margin-top: 8px; }
+
+    /* Examples */
+    .example-block { background: var(--bg3); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+    .fp-block { border-left: 4px solid var(--fp); }
+    .fn-block { border-left: 4px solid var(--fn); }
+    .example-header { font-weight: 700; margin-bottom: 10px; font-size: 0.9em; color: var(--muted); }
+    .fp-entry, .fn-entry { margin: 6px 0; font-size: 0.88em; line-height: 1.5; }
+    .fp-badge { background: #450a0a; color: var(--fp); padding: 2px 8px; border-radius: 4px; font-size: 0.78em; font-weight: 700; margin-left: 6px; }
+    .fn-badge { background: #451a03; color: var(--fn); padding: 2px 8px; border-radius: 4px; font-size: 0.78em; font-weight: 700; margin-left: 6px; }
+    .fp-note  { font-size: 0.8em; color: var(--muted); margin-top: 8px; font-style: italic; }
+    .fn-reason { font-size: 0.8em; color: var(--blue); margin-top: 2px; margin-left: 12px; }
+
+    /* Visualization */
+    .viz-container { background: var(--bg3); border-radius: 10px; padding: 20px; text-align: center; }
+    .viz-container img { max-width: 100%; border-radius: 8px; }
+
+    /* Legend */
+    .legend { display: flex; gap: 20px; flex-wrap: wrap; margin: 16px 0; }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.88em; }
+    .legend-dot { width: 14px; height: 14px; border-radius: 3px; }
+
+    /* Methodology box */
+    .method-box { background: var(--bg3); border-radius: 8px; padding: 16px; margin-bottom: 12px; font-size: 0.9em; }
+    .method-box code { display: block; margin: 8px 0; padding: 8px; background: var(--bg); border-radius: 6px; }
+
+    /* Tag */
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.78em; font-weight: 600; }
+    .tag-eval { background: #1e3a5f; color: var(--blue); }
+    .tag-prod  { background: #14532d; color: var(--success); }
+
+    /* Footer */
+    footer { text-align: center; color: var(--muted); font-size: 0.82em; padding: 24px; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- 1. Hero / Title -->
+  <section class="hero">
+    <h1>🧠 Neura AI — Context / Memory Retrieval Evaluation</h1>
+    <p class="hero-subtitle">Stage 2: Measuring how accurately the production hybrid retrieval pipeline surfaces the right memories for a given user query.</p>
+    <div class="hero-meta">
+      <div class="meta-item">📅 <strong>Run:</strong> 2026-09-02T06:11:45.284Z</div>
+      <div class="meta-item">👤 <strong>Eval user:</strong> eval-user-001</div>
+      <div class="meta-item">📊 <strong>Queries:</strong> 40</div>
+      <div class="meta-item">🗃 <strong>Memories:</strong> 160 (90 factual + 70 vector)</div>
+      <div class="meta-item">🔬 <strong>Pipeline:</strong> Production hybridRetrieval</div>
+      <span class="tag tag-prod">REAL RETRIEVAL</span>
+    </div>
+  </section>
+
+  <!-- 2. Verification badge -->
+  <section>
+    <h2>✅ Verification Status</h2>
+    <div class="verify-badge pass">
+      ✅ CONTEXT RETRIEVAL EVALUATION VERIFICATION: PASS
+    </div>
+    <p style="margin-top: 12px; color: var(--muted); font-size: 0.9em;">
+      All TP/FP/FN sets were independently verified: TP == EXPECTED ∩ FETCHED, FP == FETCHED − EXPECTED, FN == EXPECTED − FETCHED. 
+      Aggregate totals cross-checked against per-query sums. Precision, Recall, F1 verified against raw counts.
+    </p>
+  </section>
+
+  <!-- 3. Overall metrics -->
+  <section>
+    <h2>📈 Overall Retrieval Performance</h2>
+    <div class="score-cards">
+      <div class="score-card precision">
+        <div class="score-value">17.2%</div>
+        <div class="score-label">Micro-Averaged Precision</div>
+      </div>
+      <div class="score-card recall">
+        <div class="score-value">52.9%</div>
+        <div class="score-label">Micro-Averaged Recall</div>
+      </div>
+      <div class="score-card f1">
+        <div class="score-value">25.9%</div>
+        <div class="score-label">Micro-Averaged F1</div>
+      </div>
+      <div class="score-card macro">
+        <div class="score-value">31.0%</div>
+        <div class="score-label">Macro-Averaged F1</div>
+      </div>
+    </div>
+    <div class="agg-grid">
+      <div class="agg-cell"><div class="agg-lbl">Total Queries</div><div class="agg-val">40</div></div>
+      <div class="agg-cell"><div class="agg-lbl">Total Expected Items</div><div class="agg-val">104</div></div>
+      <div class="agg-cell"><div class="agg-lbl">Total Fetched Items</div><div class="agg-val">320</div></div>
+      <div class="agg-cell tp"><div class="agg-lbl">Total TP ✓</div><div class="agg-val">55</div></div>
+      <div class="agg-cell fp"><div class="agg-lbl">Total FP ✗</div><div class="agg-val">265</div></div>
+      <div class="agg-cell fn"><div class="agg-lbl">Total FN ⚠</div><div class="agg-val">49</div></div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--tp)"></div>TP — Relevant memory correctly retrieved</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--fp)"></div>FP — Irrelevant memory retrieved (noise)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--fn)"></div>FN — Relevant memory missed by the system</div>
+    </div>
+  </section>
+
+  <!-- 4. Dataset description -->
+  <section>
+    <h2>🗃 Dataset Description</h2>
+    <p>The evaluation uses <strong>160 seeded memories</strong> across 8 categories, all isolated to <code>eval-user-001</code>:</p>
+    <table style="margin-top:16px">
+      <tr><th>Category</th><th>IDs</th><th>Store</th><th>Count</th></tr>
+      <tr><td>A: Personal facts & preferences</td><td>eval-f001 … eval-f020</td><td>PostgreSQL</td><td>20</td></tr>
+      <tr><td>B: Projects & technical info</td><td>eval-f021 … eval-f040, eval-s001 … eval-s005</td><td>Postgres + Qdrant</td><td>25</td></tr>
+      <tr><td>C: Past conversations / episodic</td><td>eval-e001 … eval-e030</td><td>Qdrant</td><td>30</td></tr>
+      <tr><td>D: Goals & tasks</td><td>eval-f041 … eval-f055, eval-e031 … eval-e035</td><td>Postgres + Qdrant</td><td>20</td></tr>
+      <tr><td>E: Dates & events</td><td>eval-e036 … eval-e050</td><td>Qdrant</td><td>15</td></tr>
+      <tr><td>F: Recency (recent vs old)</td><td>eval-f056 … eval-f060, eval-e051 … eval-e055</td><td>Postgres + Qdrant</td><td>10</td></tr>
+      <tr><td>G: Same-topic cluster (health)</td><td>eval-f061 … eval-f070</td><td>PostgreSQL</td><td>10</td></tr>
+      <tr><td>H: Noise / distractors</td><td>eval-f071 … eval-f090, eval-s006 … eval-s015</td><td>Postgres + Qdrant</td><td>30</td></tr>
+    </table>
+  </section>
+
+  <!-- 5. Retrieval methodology -->
+  <section>
+    <h2>⚙️ Retrieval Methodology</h2>
+    <div class="method-box">
+      <p>Every query is routed through the <strong>production</strong> <code>hybridRetrieval.getRelevantMemories(query, userId, sessionId)</code> function.</p>
+      <p style="margin-top:8px">The hybrid score formula is:</p>
+      <code>score = (vector_similarity × 0.5) + (lexical_overlap × 0.2) + (importance × 0.2) + (recency_decay × 0.1) + session_bonus(0.04)</code>
+      <p style="margin-top:8px; color:var(--muted)">Qdrant provides vector similarity. PostgreSQL provides full-text lexical search. Neo4j provides graph-based neighbour scores. topK = 8.</p>
+    </div>
+    <div class="method-box">
+      <p><strong>EXPECTED</strong> — defined in <code>eval-ground-truth.js</code> before any retrieval was run. Includes reasoning for each expected memory.</p>
+      <p style="margin-top:8px"><strong>FETCHED</strong> — the actual output of the production pipeline. Eval IDs extracted from <code>memory.id</code> (factual) or <code>memory.metadata.evalId</code> (vector).</p>
+    </div>
+    <div class="method-box">
+      <p><strong>Set-based comparison:</strong></p>
+      <code>TP = EXPECTED ∩ FETCHED</code>
+      <code>FP = FETCHED − EXPECTED</code>
+      <code>FN = EXPECTED − FETCHED</code>
+      <p style="margin-top:8px; color:var(--muted)">TN is not computed — no finite universe of all non-relevant memories exists in retrieval evaluation.</p>
+    </div>
+  </section>
+
+  <!-- 6. Visualization -->
+  <section>
+    <h2>📊 Expected vs Fetched Context Visualization</h2>
+    <div class="viz-container">
+      <img src="context-retrieval-summary.png" alt="Retrieval evaluation visualization">
+      <p style="color:var(--muted);font-size:0.85em;margin-top:12px">
+        Green bars = F1 ≥ 0.7 (good). Orange = 0.4–0.7 (partial). Red = &lt; 0.4 (poor retrieval).
+      </p>
+    </div>
+  </section>
+
+  <!-- 7. Category breakdown -->
+  <section>
+    <h2>📂 Category Breakdown</h2>
+    <table>
+      <tr>
+        <th>Category</th><th>Queries</th>
+        <th>TP</th><th>FP</th><th>FN</th>
+        <th>Precision</th><th>Recall</th><th>F1</th>
+      </tr>
+      <tr>
+      <td>exact-factual-recall</td>
+      <td>4</td>
+      <td class="tp-count">5</td>
+      <td class="fp-count">27</td>
+      <td class="fn-count">3</td>
+      <td>15.6%</td>
+      <td>62.5%</td>
+      <td class="danger">25.0%</td>
+    </tr>
+<tr>
+      <td>project-technical-context</td>
+      <td>6</td>
+      <td class="tp-count">12</td>
+      <td class="fp-count">36</td>
+      <td class="fn-count">4</td>
+      <td>25.0%</td>
+      <td>75.0%</td>
+      <td class="danger">37.5%</td>
+    </tr>
+<tr>
+      <td>semantic-paraphrased-recall</td>
+      <td>4</td>
+      <td class="tp-count">5</td>
+      <td class="fp-count">27</td>
+      <td class="fn-count">1</td>
+      <td>15.6%</td>
+      <td>83.3%</td>
+      <td class="danger">26.3%</td>
+    </tr>
+<tr>
+      <td>episodic-recall</td>
+      <td>6</td>
+      <td class="tp-count">9</td>
+      <td class="fp-count">39</td>
+      <td class="fn-count">4</td>
+      <td>18.8%</td>
+      <td>69.2%</td>
+      <td class="danger">29.5%</td>
+    </tr>
+<tr>
+      <td>goals-tasks</td>
+      <td>4</td>
+      <td class="tp-count">3</td>
+      <td class="fp-count">29</td>
+      <td class="fn-count">9</td>
+      <td>9.4%</td>
+      <td>25.0%</td>
+      <td class="danger">13.6%</td>
+    </tr>
+<tr>
+      <td>dates-events</td>
+      <td>4</td>
+      <td class="tp-count">6</td>
+      <td class="fp-count">26</td>
+      <td class="fn-count">1</td>
+      <td>18.8%</td>
+      <td>85.7%</td>
+      <td class="danger">30.8%</td>
+    </tr>
+<tr>
+      <td>recency-recent</td>
+      <td>1</td>
+      <td class="tp-count">2</td>
+      <td class="fp-count">6</td>
+      <td class="fn-count">2</td>
+      <td>25.0%</td>
+      <td>50.0%</td>
+      <td class="danger">33.3%</td>
+    </tr>
+<tr>
+      <td>recency-old</td>
+      <td>2</td>
+      <td class="tp-count">3</td>
+      <td class="fp-count">13</td>
+      <td class="fn-count">1</td>
+      <td>18.8%</td>
+      <td>75.0%</td>
+      <td class="danger">30.0%</td>
+    </tr>
+<tr>
+      <td>same-topic-cluster</td>
+      <td>2</td>
+      <td class="tp-count">1</td>
+      <td class="fp-count">15</td>
+      <td class="fn-count">9</td>
+      <td>6.3%</td>
+      <td>10.0%</td>
+      <td class="danger">7.7%</td>
+    </tr>
+<tr>
+      <td>multi-memory-complex</td>
+      <td>3</td>
+      <td class="tp-count">9</td>
+      <td class="fp-count">15</td>
+      <td class="fn-count">4</td>
+      <td>37.5%</td>
+      <td>69.2%</td>
+      <td class="warning">48.6%</td>
+    </tr>
+<tr>
+      <td>noise-distractor</td>
+      <td>2</td>
+      <td class="tp-count">0</td>
+      <td class="fp-count">16</td>
+      <td class="fn-count">5</td>
+      <td>0.0%</td>
+      <td>0.0%</td>
+      <td class="danger">0.0%</td>
+    </tr>
+<tr>
+      <td>no-relevant-memory</td>
+      <td>1</td>
+      <td class="tp-count">0</td>
+      <td class="fp-count">8</td>
+      <td class="fn-count">1</td>
+      <td>0.0%</td>
+      <td>0.0%</td>
+      <td class="danger">0.0%</td>
+    </tr>
+<tr>
+      <td>cross-session-multi</td>
+      <td>1</td>
+      <td class="tp-count">0</td>
+      <td class="fp-count">8</td>
+      <td class="fn-count">5</td>
+      <td>0.0%</td>
+      <td>0.0%</td>
+      <td class="danger">0.0%</td>
+    </tr>
+    </table>
+  </section>
+
+  <!-- 8. Representative query results -->
+  <section>
+    <h2>🔍 Representative Query-Level Results</h2>
+    <p style="color:var(--muted);font-size:0.9em;margin-bottom:20px">
+      Showing first 8 queries. Each block traces: Query → Expected → Fetched → TP/FP/FN.
+    </p>
+    
+    <div class="query-detail">
+      <div class="qd-header">
+        <span class="qd-id">Q01</span>
+        <span class="qd-cat">exact-factual-recall</span>
+        <span class="qd-f1 warning">F1: 40.00%</span>
+      </div>
+      <div class="qd-query"><strong>Query:</strong> What is my name and where do I live?</div>
+
+      <div class="qd-section expected">
+        <div class="section-label">📋 EXPECTED (2)</div>
+        <div class="memory-pill expected-pill">
+            <code>eval-f001</code>
+            <span class="reason">→ Directly states user's name (Arjun Mehta) and age.</span>
+          </div><div class="memory-pill expected-pill">
+            <code>eval-f002</code>
+            <span class="reason">→ Directly states user's location (Koramangala, Bengaluru).</span>
+          </div>
+      </div>
+
+      <div class="qd-section fetched">
+        <div class="section-label">🔍 FETCHED (8)</div>
+        <div class="memory-pill fp-pill">
+            <code>eval-e008</code> ✗ FP
+            <span class="mem-summary">1:1 with manager Anjali; on track for staff engineer promotion.</span>
+          </div><div class="memory-pill tp-pill">
+            <code>eval-f001</code> ✓ TP
+            <span class="mem-summary">User's name is Arjun Mehta, age 32.</span>
+          </div><div class="memory-pill tp-pill">
+            <code>eval-f002</code> ✓ TP
+            <span class="mem-summary">User lives in Koramangala, Bengaluru, India.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f007</code> ✗ FP
+            <span class="mem-summary">User is vegetarian and allergic to peanuts.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f021</code> ✗ FP
+            <span class="mem-summary">User is building PaySwift payment gateway checkout SDK integration.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-e033</code> ✗ FP
+            <span class="mem-summary">Ran half-marathon yesterday in 2:08 as training milestone.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-e051</code> ✗ FP
+            <span class="mem-summary">Stand-up: velocity attack fraud rule is ready for QA.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f003</code> ✗ FP
+            <span class="mem-summary">User is a senior software engineer at PaySwift (fintech startup).</span>
+          </div>
+        
+      </div>
+
+      <div class="qd-metrics-row">
+        <span class="metric-badge tp">TP: 2</span>
+        <span class="metric-badge fp">FP: 6</span>
+        <span class="metric-badge fn">FN: 0</span>
+        <span class="metric-badge prec">P: 25.00%</span>
+        <span class="metric-badge rec">R: 100.00%</span>
+        <span class="metric-badge f1">F1: 40.00%</span>
+      </div>
+
+      
+    </div>
+  
+
+    <div class="query-detail">
+      <div class="qd-header">
+        <span class="qd-id">Q02</span>
+        <span class="qd-cat">exact-factual-recall</span>
+        <span class="qd-f1 danger">F1: 18.18%</span>
+      </div>
+      <div class="qd-query"><strong>Query:</strong> Tell me about my educational background and work history.</div>
+
+      <div class="qd-section expected">
+        <div class="section-label">📋 EXPECTED (3)</div>
+        <div class="memory-pill expected-pill">
+            <code>eval-f018</code>
+            <span class="reason">→ States B.Tech CS from IIT Bombay 2015.</span>
+          </div><div class="memory-pill expected-pill">
+            <code>eval-f003</code>
+            <span class="reason">→ States current job: senior SE at PaySwift fintech startup.</span>
+          </div><div class="memory-pill expected-pill">
+            <code>eval-f060</code>
+            <span class="reason">→ States when user joined PaySwift (2 years ago as senior engineer).</span>
+          </div>
+      </div>
+
+      <div class="qd-section fetched">
+        <div class="section-label">🔍 FETCHED (8)</div>
+        <div class="memory-pill fp-pill">
+            <code>eval-e008</code> ✗ FP
+            <span class="mem-summary">1:1 with manager Anjali; on track for staff engineer promotion.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f021</code> ✗ FP
+            <span class="mem-summary">User is building PaySwift payment gateway checkout SDK integration.</span>
+          </div><div class="memory-pill tp-pill">
+            <code>eval-f003</code> ✓ TP
+            <span class="mem-summary">User is a senior software engineer at PaySwift (fintech startup).</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f007</code> ✗ FP
+            <span class="mem-summary">User is vegetarian and allergic to peanuts.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-e033</code> ✗ FP
+            <span class="mem-summary">Ran half-marathon yesterday in 2:08 as training milestone.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f001</code> ✗ FP
+            <span class="mem-summary">User's name is Arjun Mehta, age 32.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-e047</code> ✗ FP
+            <span class="mem-summary">Megha joins October 1; onboarding plan due September 25.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-e035</code> ✗ FP
+            <span class="mem-summary">Hired Megha (senior backend, Kafka/Go) to join next month.</span>
+          </div>
+        
+      </div>
+
+      <div class="qd-metrics-row">
+        <span class="metric-badge tp">TP: 1</span>
+        <span class="metric-badge fp">FP: 7</span>
+        <span class="metric-badge fn">FN: 2</span>
+        <span class="metric-badge prec">P: 12.50%</span>
+        <span class="metric-badge rec">R: 33.33%</span>
+        <span class="metric-badge f1">F1: 18.18%</span>
+      </div>
+
+      
+      <div class="qd-section missed">
+        <div class="section-label">⚠ MISSED (FN: 2)</div>
+        <div class="memory-pill fn-pill"><code>eval-f018</code> — User graduated B.Tech CS from IIT Bombay in 2015.</div><div class="memory-pill fn-pill"><code>eval-f060</code> — Joined PaySwift as senior engineer January 2 years ago; 30 engineers then.</div>
+      </div>
+    </div>
+  
+
+    <div class="query-detail">
+      <div class="qd-header">
+        <span class="qd-id">Q03</span>
+        <span class="qd-cat">exact-factual-recall</span>
+        <span class="qd-f1 danger">F1: 22.22%</span>
+      </div>
+      <div class="qd-query"><strong>Query:</strong> What programming languages do I use and for how long?</div>
+
+      <div class="qd-section expected">
+        <div class="section-label">📋 EXPECTED (1)</div>
+        <div class="memory-pill expected-pill">
+            <code>eval-f004</code>
+            <span class="reason">→ Directly states Python and TypeScript for 8+ years.</span>
+          </div>
+      </div>
+
+      <div class="qd-section fetched">
+        <div class="section-label">🔍 FETCHED (8)</div>
+        <div class="memory-pill fp-pill">
+            <code>eval-e008</code> ✗ FP
+            <span class="mem-summary">1:1 with manager Anjali; on track for staff engineer promotion.</span>
+          </div><div class="memory-pill tp-pill">
+            <code>eval-f004</code> ✓ TP
+            <span class="mem-summary">User has 8+ years of Python and TypeScript experience.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f058</code> ✗ FP
+            <span class="mem-summary">Fixed broken CI test that was blocking all PR merges.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f021</code> ✗ FP
+            <span class="mem-summary">User is building PaySwift payment gateway checkout SDK integration.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-e033</code> ✗ FP
+            <span class="mem-summary">Ran half-marathon yesterday in 2:08 as training milestone.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f007</code> ✗ FP
+            <span class="mem-summary">User is vegetarian and allergic to peanuts.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f003</code> ✗ FP
+            <span class="mem-summary">User is a senior software engineer at PaySwift (fintech startup).</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f001</code> ✗ FP
+            <span class="mem-summary">User's name is Arjun Mehta, age 32.</span>
+          </div>
+        
+      </div>
+
+      <div class="qd-metrics-row">
+        <span class="metric-badge tp">TP: 1</span>
+        <span class="metric-badge fp">FP: 7</span>
+        <span class="metric-badge fn">FN: 0</span>
+        <span class="metric-badge prec">P: 12.50%</span>
+        <span class="metric-badge rec">R: 100.00%</span>
+        <span class="metric-badge f1">F1: 22.22%</span>
+      </div>
+
+      
+    </div>
+  
+
+    <div class="query-detail">
+      <div class="qd-header">
+        <span class="qd-id">Q04</span>
+        <span class="qd-cat">exact-factual-recall</span>
+        <span class="qd-f1 danger">F1: 20.00%</span>
+      </div>
+      <div class="qd-query"><strong>Query:</strong> What are my dietary restrictions and food preferences?</div>
+
+      <div class="qd-section expected">
+        <div class="section-label">📋 EXPECTED (2)</div>
+        <div class="memory-pill expected-pill">
+            <code>eval-f007</code>
+            <span class="reason">→ Directly states user is vegetarian and allergic to peanuts.</span>
+          </div><div class="memory-pill expected-pill">
+            <code>eval-f006</code>
+            <span class="reason">→ States favourite breakfast: idli with sambar.</span>
+          </div>
+      </div>
+
+      <div class="qd-section fetched">
+        <div class="section-label">🔍 FETCHED (8)</div>
+        <div class="memory-pill tp-pill">
+            <code>eval-f007</code> ✓ TP
+            <span class="mem-summary">User is vegetarian and allergic to peanuts.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-e008</code> ✗ FP
+            <span class="mem-summary">1:1 with manager Anjali; on track for staff engineer promotion.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f058</code> ✗ FP
+            <span class="mem-summary">Fixed broken CI test that was blocking all PR merges.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-e033</code> ✗ FP
+            <span class="mem-summary">Ran half-marathon yesterday in 2:08 as training milestone.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-e010</code> ✗ FP
+            <span class="mem-summary">Reviewed Kavya's UPI deep link PR; 12 comments on error handling.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-e047</code> ✗ FP
+            <span class="mem-summary">Megha joins October 1; onboarding plan due September 25.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-e037</code> ✗ FP
+            <span class="mem-summary">Father's 65th birthday: November 3. Planning surprise family trip.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-e052</code> ✗ FP
+            <span class="mem-summary">Lunch brainstorm with Ravi and Kavya on cross-border payments.</span>
+          </div>
+        
+      </div>
+
+      <div class="qd-metrics-row">
+        <span class="metric-badge tp">TP: 1</span>
+        <span class="metric-badge fp">FP: 7</span>
+        <span class="metric-badge fn">FN: 1</span>
+        <span class="metric-badge prec">P: 12.50%</span>
+        <span class="metric-badge rec">R: 50.00%</span>
+        <span class="metric-badge f1">F1: 20.00%</span>
+      </div>
+
+      
+      <div class="qd-section missed">
+        <div class="section-label">⚠ MISSED (FN: 1)</div>
+        <div class="memory-pill fn-pill"><code>eval-f006</code> — User's favourite breakfast is idli with sambar.</div>
+      </div>
+    </div>
+  
+
+    <div class="query-detail">
+      <div class="qd-header">
+        <span class="qd-id">Q05</span>
+        <span class="qd-cat">project-technical-context</span>
+        <span class="qd-f1 danger">F1: 36.36%</span>
+      </div>
+      <div class="qd-query"><strong>Query:</strong> What project am I currently working on at PaySwift?</div>
+
+      <div class="qd-section expected">
+        <div class="section-label">📋 EXPECTED (3)</div>
+        <div class="memory-pill expected-pill">
+            <code>eval-f021</code>
+            <span class="reason">→ Directly states user is building payment gateway SDK.</span>
+          </div><div class="memory-pill expected-pill">
+            <code>eval-f022</code>
+            <span class="reason">→ Describes SDK technology stack (TypeScript, React, Vue).</span>
+          </div><div class="memory-pill expected-pill">
+            <code>eval-f026</code>
+            <span class="reason">→ States user owns the fraud detection microservice.</span>
+          </div>
+      </div>
+
+      <div class="qd-section fetched">
+        <div class="section-label">🔍 FETCHED (8)</div>
+        <div class="memory-pill tp-pill">
+            <code>eval-f021</code> ✓ TP
+            <span class="mem-summary">User is building PaySwift payment gateway checkout SDK integration.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f024</code> ✗ FP
+            <span class="mem-summary">PaySwift API uses JWT auth with 15-minute access token TTL.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f023</code> ✗ FP
+            <span class="mem-summary">PaySwift stack: PostgreSQL for transactions, Redis for caching.</span>
+          </div><div class="memory-pill tp-pill">
+            <code>eval-f022</code> ✓ TP
+            <span class="mem-summary">PaySwift checkout SDK: TypeScript, supports React and Vue.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f038</code> ✗ FP
+            <span class="mem-summary">User leads a team of 5 engineers at PaySwift.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f025</code> ✗ FP
+            <span class="mem-summary">PaySwift backend: AWS ECS Fargate with CPU-based auto-scaling.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f040</code> ✗ FP
+            <span class="mem-summary">PaySwift uses OpenTelemetry for distributed tracing.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f037</code> ✗ FP
+            <span class="mem-summary">PaySwift supports UPI, credit/debit cards, and BNPL payments.</span>
+          </div>
+        
+      </div>
+
+      <div class="qd-metrics-row">
+        <span class="metric-badge tp">TP: 2</span>
+        <span class="metric-badge fp">FP: 6</span>
+        <span class="metric-badge fn">FN: 1</span>
+        <span class="metric-badge prec">P: 25.00%</span>
+        <span class="metric-badge rec">R: 66.67%</span>
+        <span class="metric-badge f1">F1: 36.36%</span>
+      </div>
+
+      
+      <div class="qd-section missed">
+        <div class="section-label">⚠ MISSED (FN: 1)</div>
+        <div class="memory-pill fn-pill"><code>eval-f026</code> — User owns fraud detection microservice (rule-based engine).</div>
+      </div>
+    </div>
+  
+
+    <div class="query-detail">
+      <div class="qd-header">
+        <span class="qd-id">Q06</span>
+        <span class="qd-cat">project-technical-context</span>
+        <span class="qd-f1 warning">F1: 50.00%</span>
+      </div>
+      <div class="qd-query"><strong>Query:</strong> What is the tech stack and infrastructure for the PaySwift backend?</div>
+
+      <div class="qd-section expected">
+        <div class="section-label">📋 EXPECTED (4)</div>
+        <div class="memory-pill expected-pill">
+            <code>eval-f023</code>
+            <span class="reason">→ Describes PostgreSQL + Redis stack for transactions and caching.</span>
+          </div><div class="memory-pill expected-pill">
+            <code>eval-f025</code>
+            <span class="reason">→ Describes AWS ECS Fargate deployment with auto-scaling.</span>
+          </div><div class="memory-pill expected-pill">
+            <code>eval-f024</code>
+            <span class="reason">→ Describes JWT authentication with 15-min TTL.</span>
+          </div><div class="memory-pill expected-pill">
+            <code>eval-f039</code>
+            <span class="reason">→ States 99.95% availability SLO for payment API.</span>
+          </div>
+      </div>
+
+      <div class="qd-section fetched">
+        <div class="section-label">🔍 FETCHED (8)</div>
+        <div class="memory-pill tp-pill">
+            <code>eval-f023</code> ✓ TP
+            <span class="mem-summary">PaySwift stack: PostgreSQL for transactions, Redis for caching.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f021</code> ✗ FP
+            <span class="mem-summary">User is building PaySwift payment gateway checkout SDK integration.</span>
+          </div><div class="memory-pill tp-pill">
+            <code>eval-f025</code> ✓ TP
+            <span class="mem-summary">PaySwift backend: AWS ECS Fargate with CPU-based auto-scaling.</span>
+          </div><div class="memory-pill tp-pill">
+            <code>eval-f024</code> ✓ TP
+            <span class="mem-summary">PaySwift API uses JWT auth with 15-minute access token TTL.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f022</code> ✗ FP
+            <span class="mem-summary">PaySwift checkout SDK: TypeScript, supports React and Vue.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f040</code> ✗ FP
+            <span class="mem-summary">PaySwift uses OpenTelemetry for distributed tracing.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f037</code> ✗ FP
+            <span class="mem-summary">PaySwift supports UPI, credit/debit cards, and BNPL payments.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f038</code> ✗ FP
+            <span class="mem-summary">User leads a team of 5 engineers at PaySwift.</span>
+          </div>
+        
+      </div>
+
+      <div class="qd-metrics-row">
+        <span class="metric-badge tp">TP: 3</span>
+        <span class="metric-badge fp">FP: 5</span>
+        <span class="metric-badge fn">FN: 1</span>
+        <span class="metric-badge prec">P: 37.50%</span>
+        <span class="metric-badge rec">R: 75.00%</span>
+        <span class="metric-badge f1">F1: 50.00%</span>
+      </div>
+
+      
+      <div class="qd-section missed">
+        <div class="section-label">⚠ MISSED (FN: 1)</div>
+        <div class="memory-pill fn-pill"><code>eval-f039</code> — Payment API SLO: 99.95% availability.</div>
+      </div>
+    </div>
+  
+
+    <div class="query-detail">
+      <div class="qd-header">
+        <span class="qd-id">Q07</span>
+        <span class="qd-cat">project-technical-context</span>
+        <span class="qd-f1 warning">F1: 66.67%</span>
+      </div>
+      <div class="qd-query"><strong>Query:</strong> What is the fraud detection service and how does it work?</div>
+
+      <div class="qd-section expected">
+        <div class="section-label">📋 EXPECTED (4)</div>
+        <div class="memory-pill expected-pill">
+            <code>eval-f026</code>
+            <span class="reason">→ States user owns the fraud detection microservice with rule-based engine.</span>
+          </div><div class="memory-pill expected-pill">
+            <code>eval-f030</code>
+            <span class="reason">→ States fraud detection handles ~50K transactions/day.</span>
+          </div><div class="memory-pill expected-pill">
+            <code>eval-s002</code>
+            <span class="reason">→ Semantic memory about rule-based fraud detection and ML improvements.</span>
+          </div><div class="memory-pill expected-pill">
+            <code>eval-f054</code>
+            <span class="reason">→ Goal to migrate fraud detection rules to OPA policy-as-code.</span>
+          </div>
+      </div>
+
+      <div class="qd-section fetched">
+        <div class="section-label">🔍 FETCHED (8)</div>
+        <div class="memory-pill tp-pill">
+            <code>eval-f030</code> ✓ TP
+            <span class="mem-summary">Fraud detection service handles ~50K transactions/day.</span>
+          </div><div class="memory-pill tp-pill">
+            <code>eval-f026</code> ✓ TP
+            <span class="mem-summary">User owns fraud detection microservice (rule-based engine).</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-e051</code> ✗ FP
+            <span class="mem-summary">Stand-up: velocity attack fraud rule is ready for QA.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-e001</code> ✗ FP
+            <span class="mem-summary">Discussed fraud detection architecture; decided to add velocity attack rule.</span>
+          </div><div class="memory-pill tp-pill">
+            <code>eval-s002</code> ✓ TP
+            <span class="mem-summary">Rule-only fraud detection has high false positives; combining with ML models improves accuracy.</span>
+          </div><div class="memory-pill tp-pill">
+            <code>eval-f054</code> ✓ TP
+            <span class="mem-summary">Goal: migrate fraud detection rules to OPA policy-as-code.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f021</code> ✗ FP
+            <span class="mem-summary">User is building PaySwift payment gateway checkout SDK integration.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-e034</code> ✗ FP
+            <span class="mem-summary">On-call rotation set up via PagerDuty; weekly across 5 engineers.</span>
+          </div>
+        
+      </div>
+
+      <div class="qd-metrics-row">
+        <span class="metric-badge tp">TP: 4</span>
+        <span class="metric-badge fp">FP: 4</span>
+        <span class="metric-badge fn">FN: 0</span>
+        <span class="metric-badge prec">P: 50.00%</span>
+        <span class="metric-badge rec">R: 100.00%</span>
+        <span class="metric-badge f1">F1: 66.67%</span>
+      </div>
+
+      
+    </div>
+  
+
+    <div class="query-detail">
+      <div class="qd-header">
+        <span class="qd-id">Q08</span>
+        <span class="qd-cat">project-technical-context</span>
+        <span class="qd-f1 danger">F1: 22.22%</span>
+      </div>
+      <div class="qd-query"><strong>Query:</strong> What payment methods does PaySwift support?</div>
+
+      <div class="qd-section expected">
+        <div class="section-label">📋 EXPECTED (1)</div>
+        <div class="memory-pill expected-pill">
+            <code>eval-f037</code>
+            <span class="reason">→ Directly lists supported payment methods: UPI, credit/debit cards, BNPL.</span>
+          </div>
+      </div>
+
+      <div class="qd-section fetched">
+        <div class="section-label">🔍 FETCHED (8)</div>
+        <div class="memory-pill tp-pill">
+            <code>eval-f037</code> ✓ TP
+            <span class="mem-summary">PaySwift supports UPI, credit/debit cards, and BNPL payments.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f021</code> ✗ FP
+            <span class="mem-summary">User is building PaySwift payment gateway checkout SDK integration.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f024</code> ✗ FP
+            <span class="mem-summary">PaySwift API uses JWT auth with 15-minute access token TTL.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f023</code> ✗ FP
+            <span class="mem-summary">PaySwift stack: PostgreSQL for transactions, Redis for caching.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f022</code> ✗ FP
+            <span class="mem-summary">PaySwift checkout SDK: TypeScript, supports React and Vue.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f040</code> ✗ FP
+            <span class="mem-summary">PaySwift uses OpenTelemetry for distributed tracing.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-f025</code> ✗ FP
+            <span class="mem-summary">PaySwift backend: AWS ECS Fargate with CPU-based auto-scaling.</span>
+          </div><div class="memory-pill fp-pill">
+            <code>eval-e039</code> ✗ FP
+            <span class="mem-summary">PaySwift presents at India Fintech Summit, Mumbai, October 8.</span>
+          </div>
+        
+      </div>
+
+      <div class="qd-metrics-row">
+        <span class="metric-badge tp">TP: 1</span>
+        <span class="metric-badge fp">FP: 7</span>
+        <span class="metric-badge fn">FN: 0</span>
+        <span class="metric-badge prec">P: 12.50%</span>
+        <span class="metric-badge rec">R: 100.00%</span>
+        <span class="metric-badge f1">F1: 22.22%</span>
+      </div>
+
+      
+    </div>
+  
+  </section>
+
+  <!-- 9. False positive examples -->
+  <section>
+    <h2>✗ False Positive Examples</h2>
+    <p style="color:var(--muted);font-size:0.9em;margin-bottom:16px">
+      Memories the system retrieved but that were NOT relevant to the query. A FP represents noise — the retrieval pipeline surfaced an irrelevant memory.
+    </p>
+    
+    <div class="example-block fp-block">
+      <div class="example-header">Query Q01: "What is my name and where do I live?"</div>
+      <div class="fp-entry">
+        <code>eval-e008</code> [episodic] — <em>1:1 with manager Anjali; on track for staff engineer promotion.</em>
+        <span class="fp-badge">FALSE POSITIVE</span>
+      </div><div class="fp-entry">
+        <code>eval-f007</code> [factual] — <em>User is vegetarian and allergic to peanuts.</em>
+        <span class="fp-badge">FALSE POSITIVE</span>
+      </div><div class="fp-entry">
+        <code>eval-f021</code> [factual] — <em>User is building PaySwift payment gateway checkout SDK integration.</em>
+        <span class="fp-badge">FALSE POSITIVE</span>
+      </div><div class="fp-entry">
+        <code>eval-e033</code> [episodic] — <em>Ran half-marathon yesterday in 2:08 as training milestone.</em>
+        <span class="fp-badge">FALSE POSITIVE</span>
+      </div><div class="fp-entry">
+        <code>eval-e051</code> [episodic] — <em>Stand-up: velocity attack fraud rule is ready for QA.</em>
+        <span class="fp-badge">FALSE POSITIVE</span>
+      </div><div class="fp-entry">
+        <code>eval-f003</code> [factual] — <em>User is a senior software engineer at PaySwift (fintech startup).</em>
+        <span class="fp-badge">FALSE POSITIVE</span>
+      </div>
+      <div class="fp-note">This memory was retrieved but was NOT in the expected set for this query.</div>
+    </div>
+  
+    <div class="example-block fp-block">
+      <div class="example-header">Query Q02: "Tell me about my educational background and work history."</div>
+      <div class="fp-entry">
+        <code>eval-e008</code> [episodic] — <em>1:1 with manager Anjali; on track for staff engineer promotion.</em>
+        <span class="fp-badge">FALSE POSITIVE</span>
+      </div><div class="fp-entry">
+        <code>eval-f021</code> [factual] — <em>User is building PaySwift payment gateway checkout SDK integration.</em>
+        <span class="fp-badge">FALSE POSITIVE</span>
+      </div><div class="fp-entry">
+        <code>eval-f007</code> [factual] — <em>User is vegetarian and allergic to peanuts.</em>
+        <span class="fp-badge">FALSE POSITIVE</span>
+      </div><div class="fp-entry">
+        <code>eval-e033</code> [episodic] — <em>Ran half-marathon yesterday in 2:08 as training milestone.</em>
+        <span class="fp-badge">FALSE POSITIVE</span>
+      </div><div class="fp-entry">
+        <code>eval-f001</code> [factual] — <em>User's name is Arjun Mehta, age 32.</em>
+        <span class="fp-badge">FALSE POSITIVE</span>
+      </div><div class="fp-entry">
+        <code>eval-e047</code> [episodic] — <em>Megha joins October 1; onboarding plan due September 25.</em>
+        <span class="fp-badge">FALSE POSITIVE</span>
+      </div><div class="fp-entry">
+        <code>eval-e035</code> [episodic] — <em>Hired Megha (senior backend, Kafka/Go) to join next month.</em>
+        <span class="fp-badge">FALSE POSITIVE</span>
+      </div>
+      <div class="fp-note">This memory was retrieved but was NOT in the expected set for this query.</div>
+    </div>
+  
+    <div class="example-block fp-block">
+      <div class="example-header">Query Q03: "What programming languages do I use and for how long?"</div>
+      <div class="fp-entry">
+        <code>eval-e008</code> [episodic] — <em>1:1 with manager Anjali; on track for staff engineer promotion.</em>
+        <span class="fp-badge">FALSE POSITIVE</span>
+      </div><div class="fp-entry">
+        <code>eval-f058</code> [factual] — <em>Fixed broken CI test that was blocking all PR merges.</em>
+        <span class="fp-badge">FALSE POSITIVE</span>
+      </div><div class="fp-entry">
+        <code>eval-f021</code> [factual] — <em>User is building PaySwift payment gateway checkout SDK integration.</em>
+        <span class="fp-badge">FALSE POSITIVE</span>
+      </div><div class="fp-entry">
+        <code>eval-e033</code> [episodic] — <em>Ran half-marathon yesterday in 2:08 as training milestone.</em>
+        <span class="fp-badge">FALSE POSITIVE</span>
+      </div><div class="fp-entry">
+        <code>eval-f007</code> [factual] — <em>User is vegetarian and allergic to peanuts.</em>
+        <span class="fp-badge">FALSE POSITIVE</span>
+      </div><div class="fp-entry">
+        <code>eval-f003</code> [factual] — <em>User is a senior software engineer at PaySwift (fintech startup).</em>
+        <span class="fp-badge">FALSE POSITIVE</span>
+      </div><div class="fp-entry">
+        <code>eval-f001</code> [factual] — <em>User's name is Arjun Mehta, age 32.</em>
+        <span class="fp-badge">FALSE POSITIVE</span>
+      </div>
+      <div class="fp-note">This memory was retrieved but was NOT in the expected set for this query.</div>
+    </div>
+  
+  </section>
+
+  <!-- 10. False negative examples -->
+  <section>
+    <h2>⚠ False Negative Examples (Missed Context)</h2>
+    <p style="color:var(--muted);font-size:0.9em;margin-bottom:16px">
+      Memories that SHOULD have been retrieved but were missed. A FN represents a gap — the LLM will not have this context.
+    </p>
+    
+    <div class="example-block fn-block">
+      <div class="example-header">Query Q02: "Tell me about my educational background and work history."</div>
+      <div class="fn-entry">
+          <code>eval-f018</code> [factual] — <em>User graduated B.Tech CS from IIT Bombay in 2015.</em>
+          <div class="fn-reason">Why expected: States B.Tech CS from IIT Bombay 2015.</div>
+          <span class="fn-badge">MISSED (FN)</span>
+        </div><div class="fn-entry">
+          <code>eval-f060</code> [factual] — <em>Joined PaySwift as senior engineer January 2 years ago; 30 engineers then.</em>
+          <div class="fn-reason">Why expected: States when user joined PaySwift (2 years ago as senior engineer).</div>
+          <span class="fn-badge">MISSED (FN)</span>
+        </div>
+    </div>
+  
+    <div class="example-block fn-block">
+      <div class="example-header">Query Q04: "What are my dietary restrictions and food preferences?"</div>
+      <div class="fn-entry">
+          <code>eval-f006</code> [factual] — <em>User's favourite breakfast is idli with sambar.</em>
+          <div class="fn-reason">Why expected: States favourite breakfast: idli with sambar.</div>
+          <span class="fn-badge">MISSED (FN)</span>
+        </div>
+    </div>
+  
+    <div class="example-block fn-block">
+      <div class="example-header">Query Q05: "What project am I currently working on at PaySwift?"</div>
+      <div class="fn-entry">
+          <code>eval-f026</code> [factual] — <em>User owns fraud detection microservice (rule-based engine).</em>
+          <div class="fn-reason">Why expected: States user owns the fraud detection microservice.</div>
+          <span class="fn-badge">MISSED (FN)</span>
+        </div>
+    </div>
+  
+    <div class="example-block fn-block">
+      <div class="example-header">Query Q06: "What is the tech stack and infrastructure for the PaySwift backend?"</div>
+      <div class="fn-entry">
+          <code>eval-f039</code> [factual] — <em>Payment API SLO: 99.95% availability.</em>
+          <div class="fn-reason">Why expected: States 99.95% availability SLO for payment API.</div>
+          <span class="fn-badge">MISSED (FN)</span>
+        </div>
+    </div>
+  
+    <div class="example-block fn-block">
+      <div class="example-header">Query Q09: "What tools and frameworks do I use for testing?"</div>
+      <div class="fn-entry">
+          <code>eval-f036</code> [factual] — <em>User uses Vitest for unit tests and Playwright for E2E.</em>
+          <div class="fn-reason">Why expected: Directly states Vitest for unit tests and Playwright for E2E.</div>
+          <span class="fn-badge">MISSED (FN)</span>
+        </div><div class="fn-entry">
+          <code>eval-f028</code> [factual] — <em>Test coverage target 80%; currently at 73% for payment flows.</em>
+          <div class="fn-reason">Why expected: Mentions test coverage target 80%, currently 73%.</div>
+          <span class="fn-badge">MISSED (FN)</span>
+        </div>
+    </div>
+  
+  </section>
+
+  <!-- 11. Full per-query table -->
+  <section>
+    <h2>📋 Full Per-Query Evaluation Table</h2>
+    <div style="overflow-x:auto">
+      <table>
+        <tr>
+          <th>ID</th><th>Category</th><th>Query</th>
+          <th>Exp</th><th>Fet</th>
+          <th>TP</th><th>FP</th><th>FN</th>
+          <th>Precision</th><th>Recall</th><th>F1</th>
+        </tr>
+        
+    <tr class="query-row warning-row">
+      <td><code>Q01</code></td>
+      <td>exact-factual-recall</td>
+      <td class="query-text">What is my name and where do I live?</td>
+      <td class="metric">2</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">2</td>
+      <td class="metric fp-count">6</td>
+      <td class="metric fn-count">0</td>
+      <td class="metric">25.00%</td>
+      <td class="metric">100.00%</td>
+      <td class="metric warning">40.00%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q02</code></td>
+      <td>exact-factual-recall</td>
+      <td class="query-text">Tell me about my educational background and work history.</td>
+      <td class="metric">3</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">1</td>
+      <td class="metric fp-count">7</td>
+      <td class="metric fn-count">2</td>
+      <td class="metric">12.50%</td>
+      <td class="metric">33.33%</td>
+      <td class="metric danger">18.18%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q03</code></td>
+      <td>exact-factual-recall</td>
+      <td class="query-text">What programming languages do I use and for how long?</td>
+      <td class="metric">1</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">1</td>
+      <td class="metric fp-count">7</td>
+      <td class="metric fn-count">0</td>
+      <td class="metric">12.50%</td>
+      <td class="metric">100.00%</td>
+      <td class="metric danger">22.22%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q04</code></td>
+      <td>exact-factual-recall</td>
+      <td class="query-text">What are my dietary restrictions and food preferences?</td>
+      <td class="metric">2</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">1</td>
+      <td class="metric fp-count">7</td>
+      <td class="metric fn-count">1</td>
+      <td class="metric">12.50%</td>
+      <td class="metric">50.00%</td>
+      <td class="metric danger">20.00%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q05</code></td>
+      <td>project-technical-context</td>
+      <td class="query-text">What project am I currently working on at PaySwift?</td>
+      <td class="metric">3</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">2</td>
+      <td class="metric fp-count">6</td>
+      <td class="metric fn-count">1</td>
+      <td class="metric">25.00%</td>
+      <td class="metric">66.67%</td>
+      <td class="metric danger">36.36%</td>
+    </tr>
+
+    <tr class="query-row warning-row">
+      <td><code>Q06</code></td>
+      <td>project-technical-context</td>
+      <td class="query-text">What is the tech stack and infrastructure for the PaySwift backend?</td>
+      <td class="metric">4</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">3</td>
+      <td class="metric fp-count">5</td>
+      <td class="metric fn-count">1</td>
+      <td class="metric">37.50%</td>
+      <td class="metric">75.00%</td>
+      <td class="metric warning">50.00%</td>
+    </tr>
+
+    <tr class="query-row warning-row">
+      <td><code>Q07</code></td>
+      <td>project-technical-context</td>
+      <td class="query-text">What is the fraud detection service and how does it work?</td>
+      <td class="metric">4</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">4</td>
+      <td class="metric fp-count">4</td>
+      <td class="metric fn-count">0</td>
+      <td class="metric">50.00%</td>
+      <td class="metric">100.00%</td>
+      <td class="metric warning">66.67%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q08</code></td>
+      <td>project-technical-context</td>
+      <td class="query-text">What payment methods does PaySwift support?</td>
+      <td class="metric">1</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">1</td>
+      <td class="metric fp-count">7</td>
+      <td class="metric fn-count">0</td>
+      <td class="metric">12.50%</td>
+      <td class="metric">100.00%</td>
+      <td class="metric danger">22.22%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q09</code></td>
+      <td>project-technical-context</td>
+      <td class="query-text">What tools and frameworks do I use for testing?</td>
+      <td class="metric">2</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">0</td>
+      <td class="metric fp-count">8</td>
+      <td class="metric fn-count">2</td>
+      <td class="metric">0.00%</td>
+      <td class="metric">0.00%</td>
+      <td class="metric danger">N/A</td>
+    </tr>
+
+    <tr class="query-row warning-row">
+      <td><code>Q10</code></td>
+      <td>project-technical-context</td>
+      <td class="query-text">What monitoring and observability tools does PaySwift use?</td>
+      <td class="metric">2</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">2</td>
+      <td class="metric fp-count">6</td>
+      <td class="metric fn-count">0</td>
+      <td class="metric">25.00%</td>
+      <td class="metric">100.00%</td>
+      <td class="metric warning">40.00%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q11</code></td>
+      <td>semantic-paraphrased-recall</td>
+      <td class="query-text">What consistency challenges do payment systems face?</td>
+      <td class="metric">1</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">1</td>
+      <td class="metric fp-count">7</td>
+      <td class="metric fn-count">0</td>
+      <td class="metric">12.50%</td>
+      <td class="metric">100.00%</td>
+      <td class="metric danger">22.22%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q12</code></td>
+      <td>semantic-paraphrased-recall</td>
+      <td class="query-text">How can I improve the reliability of my TypeScript API boundaries?</td>
+      <td class="metric">2</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">1</td>
+      <td class="metric fp-count">7</td>
+      <td class="metric fn-count">1</td>
+      <td class="metric">12.50%</td>
+      <td class="metric">50.00%</td>
+      <td class="metric danger">20.00%</td>
+    </tr>
+
+    <tr class="query-row warning-row">
+      <td><code>Q13</code></td>
+      <td>semantic-paraphrased-recall</td>
+      <td class="query-text">What do I need to know about database connection management under load?</td>
+      <td class="metric">2</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">2</td>
+      <td class="metric fp-count">6</td>
+      <td class="metric fn-count">0</td>
+      <td class="metric">25.00%</td>
+      <td class="metric">100.00%</td>
+      <td class="metric warning">40.00%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q14</code></td>
+      <td>semantic-paraphrased-recall</td>
+      <td class="query-text">What happened during the security incident with our OAuth implementation?</td>
+      <td class="metric">1</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">1</td>
+      <td class="metric fp-count">7</td>
+      <td class="metric fn-count">0</td>
+      <td class="metric">12.50%</td>
+      <td class="metric">100.00%</td>
+      <td class="metric danger">22.22%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q15</code></td>
+      <td>episodic-recall</td>
+      <td class="query-text">What production incidents have we had recently?</td>
+      <td class="metric">3</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">2</td>
+      <td class="metric fp-count">6</td>
+      <td class="metric fn-count">1</td>
+      <td class="metric">25.00%</td>
+      <td class="metric">66.67%</td>
+      <td class="metric danger">36.36%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q16</code></td>
+      <td>episodic-recall</td>
+      <td class="query-text">What did we discuss in the last sprint retrospective?</td>
+      <td class="metric">1</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">1</td>
+      <td class="metric fp-count">7</td>
+      <td class="metric fn-count">0</td>
+      <td class="metric">12.50%</td>
+      <td class="metric">100.00%</td>
+      <td class="metric danger">22.22%</td>
+    </tr>
+
+    <tr class="query-row warning-row">
+      <td><code>Q17</code></td>
+      <td>episodic-recall</td>
+      <td class="query-text">What is the status of new team members I recently onboarded?</td>
+      <td class="metric">2</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">2</td>
+      <td class="metric fp-count">6</td>
+      <td class="metric fn-count">0</td>
+      <td class="metric">25.00%</td>
+      <td class="metric">100.00%</td>
+      <td class="metric warning">40.00%</td>
+    </tr>
+
+    <tr class="query-row warning-row">
+      <td><code>Q18</code></td>
+      <td>episodic-recall</td>
+      <td class="query-text">Tell me about the BNPL feature we shipped.</td>
+      <td class="metric">2</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">2</td>
+      <td class="metric fp-count">6</td>
+      <td class="metric fn-count">0</td>
+      <td class="metric">25.00%</td>
+      <td class="metric">100.00%</td>
+      <td class="metric warning">40.00%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q19</code></td>
+      <td>episodic-recall</td>
+      <td class="query-text">What is the update from my 1:1 with my manager?</td>
+      <td class="metric">2</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">1</td>
+      <td class="metric fp-count">7</td>
+      <td class="metric fn-count">1</td>
+      <td class="metric">12.50%</td>
+      <td class="metric">50.00%</td>
+      <td class="metric danger">20.00%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q20</code></td>
+      <td>episodic-recall</td>
+      <td class="query-text">What architectural decisions have we made recently?</td>
+      <td class="metric">3</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">1</td>
+      <td class="metric fp-count">7</td>
+      <td class="metric fn-count">2</td>
+      <td class="metric">12.50%</td>
+      <td class="metric">33.33%</td>
+      <td class="metric danger">18.18%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q21</code></td>
+      <td>goals-tasks</td>
+      <td class="query-text">What are my current engineering goals for this quarter?</td>
+      <td class="metric">3</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">0</td>
+      <td class="metric fp-count">8</td>
+      <td class="metric fn-count">3</td>
+      <td class="metric">0.00%</td>
+      <td class="metric">0.00%</td>
+      <td class="metric danger">N/A</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q22</code></td>
+      <td>goals-tasks</td>
+      <td class="query-text">What certifications and courses am I working toward?</td>
+      <td class="metric">3</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">1</td>
+      <td class="metric fp-count">7</td>
+      <td class="metric fn-count">2</td>
+      <td class="metric">12.50%</td>
+      <td class="metric">33.33%</td>
+      <td class="metric danger">18.18%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q23</code></td>
+      <td>goals-tasks</td>
+      <td class="query-text">What engineering improvements am I planning to make to our infrastructure?</td>
+      <td class="metric">3</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">1</td>
+      <td class="metric fp-count">7</td>
+      <td class="metric fn-count">2</td>
+      <td class="metric">12.50%</td>
+      <td class="metric">33.33%</td>
+      <td class="metric danger">18.18%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q24</code></td>
+      <td>goals-tasks</td>
+      <td class="query-text">What personal fitness goals am I working on?</td>
+      <td class="metric">3</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">1</td>
+      <td class="metric fp-count">7</td>
+      <td class="metric fn-count">2</td>
+      <td class="metric">12.50%</td>
+      <td class="metric">33.33%</td>
+      <td class="metric danger">18.18%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q25</code></td>
+      <td>dates-events</td>
+      <td class="query-text">What important events or deadlines do I have coming up in November?</td>
+      <td class="metric">3</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">2</td>
+      <td class="metric fp-count">6</td>
+      <td class="metric fn-count">1</td>
+      <td class="metric">25.00%</td>
+      <td class="metric">66.67%</td>
+      <td class="metric danger">36.36%</td>
+    </tr>
+
+    <tr class="query-row warning-row">
+      <td><code>Q26</code></td>
+      <td>dates-events</td>
+      <td class="query-text">What is the status of hiring Megha and when does she join?</td>
+      <td class="metric">2</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">2</td>
+      <td class="metric fp-count">6</td>
+      <td class="metric fn-count">0</td>
+      <td class="metric">25.00%</td>
+      <td class="metric">100.00%</td>
+      <td class="metric warning">40.00%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q27</code></td>
+      <td>dates-events</td>
+      <td class="query-text">When is the company offsite and what am I presenting?</td>
+      <td class="metric">1</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">1</td>
+      <td class="metric fp-count">7</td>
+      <td class="metric fn-count">0</td>
+      <td class="metric">12.50%</td>
+      <td class="metric">100.00%</td>
+      <td class="metric danger">22.22%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q28</code></td>
+      <td>dates-events</td>
+      <td class="query-text">What trip have I planned for the end of the year?</td>
+      <td class="metric">1</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">1</td>
+      <td class="metric fp-count">7</td>
+      <td class="metric fn-count">0</td>
+      <td class="metric">12.50%</td>
+      <td class="metric">100.00%</td>
+      <td class="metric danger">22.22%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q29</code></td>
+      <td>recency-recent</td>
+      <td class="query-text">What have I been working on today or in the last few hours?</td>
+      <td class="metric">4</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">2</td>
+      <td class="metric fp-count">6</td>
+      <td class="metric fn-count">2</td>
+      <td class="metric">25.00%</td>
+      <td class="metric">50.00%</td>
+      <td class="metric danger">33.33%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q30</code></td>
+      <td>recency-old</td>
+      <td class="query-text">When did I join PaySwift and what was it like then?</td>
+      <td class="metric">2</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">1</td>
+      <td class="metric fp-count">7</td>
+      <td class="metric fn-count">1</td>
+      <td class="metric">12.50%</td>
+      <td class="metric">50.00%</td>
+      <td class="metric danger">20.00%</td>
+    </tr>
+
+    <tr class="query-row warning-row">
+      <td><code>Q31</code></td>
+      <td>recency-old</td>
+      <td class="query-text">What major infrastructure migrations have we done in the past year?</td>
+      <td class="metric">2</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">2</td>
+      <td class="metric fp-count">6</td>
+      <td class="metric fn-count">0</td>
+      <td class="metric">25.00%</td>
+      <td class="metric">100.00%</td>
+      <td class="metric warning">40.00%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q32</code></td>
+      <td>same-topic-cluster</td>
+      <td class="query-text">What are my diet and nutrition habits?</td>
+      <td class="metric">5</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">1</td>
+      <td class="metric fp-count">7</td>
+      <td class="metric fn-count">4</td>
+      <td class="metric">12.50%</td>
+      <td class="metric">20.00%</td>
+      <td class="metric danger">15.38%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q33</code></td>
+      <td>same-topic-cluster</td>
+      <td class="query-text">What is my health and fitness routine?</td>
+      <td class="metric">5</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">0</td>
+      <td class="metric fp-count">8</td>
+      <td class="metric fn-count">5</td>
+      <td class="metric">0.00%</td>
+      <td class="metric">0.00%</td>
+      <td class="metric danger">N/A</td>
+    </tr>
+
+    <tr class="query-row success-row">
+      <td><code>Q34</code></td>
+      <td>multi-memory-complex</td>
+      <td class="query-text">What is the state of my fraud detection work — what exists, what is broken, and what needs to change?</td>
+      <td class="metric">5</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">5</td>
+      <td class="metric fp-count">3</td>
+      <td class="metric fn-count">0</td>
+      <td class="metric">62.50%</td>
+      <td class="metric">100.00%</td>
+      <td class="metric success">76.92%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q35</code></td>
+      <td>multi-memory-complex</td>
+      <td class="query-text">What is my career progression and promotion status?</td>
+      <td class="metric">4</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">2</td>
+      <td class="metric fp-count">6</td>
+      <td class="metric fn-count">2</td>
+      <td class="metric">25.00%</td>
+      <td class="metric">50.00%</td>
+      <td class="metric danger">33.33%</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q36</code></td>
+      <td>noise-distractor</td>
+      <td class="query-text">What do I know about quantum computing?</td>
+      <td class="metric">1</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">0</td>
+      <td class="metric fp-count">8</td>
+      <td class="metric fn-count">1</td>
+      <td class="metric">0.00%</td>
+      <td class="metric">0.00%</td>
+      <td class="metric danger">N/A</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q37</code></td>
+      <td>noise-distractor</td>
+      <td class="query-text">Tell me about my personal interests and hobbies outside work.</td>
+      <td class="metric">4</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">0</td>
+      <td class="metric fp-count">8</td>
+      <td class="metric fn-count">4</td>
+      <td class="metric">0.00%</td>
+      <td class="metric">0.00%</td>
+      <td class="metric danger">N/A</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q38</code></td>
+      <td>no-relevant-memory</td>
+      <td class="query-text">What is the recipe for making sourdough bread?</td>
+      <td class="metric">1</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">0</td>
+      <td class="metric fp-count">8</td>
+      <td class="metric fn-count">1</td>
+      <td class="metric">0.00%</td>
+      <td class="metric">0.00%</td>
+      <td class="metric danger">N/A</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q39</code></td>
+      <td>cross-session-multi</td>
+      <td class="query-text">What are all my upcoming important deadlines and milestones before year-end?</td>
+      <td class="metric">5</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">0</td>
+      <td class="metric fp-count">8</td>
+      <td class="metric fn-count">5</td>
+      <td class="metric">0.00%</td>
+      <td class="metric">0.00%</td>
+      <td class="metric danger">N/A</td>
+    </tr>
+
+    <tr class="query-row danger-row">
+      <td><code>Q40</code></td>
+      <td>multi-memory-complex</td>
+      <td class="query-text">What has my team been building and what did we recently ship?</td>
+      <td class="metric">4</td>
+      <td class="metric">8</td>
+      <td class="metric tp-count">2</td>
+      <td class="metric fp-count">6</td>
+      <td class="metric fn-count">2</td>
+      <td class="metric">25.00%</td>
+      <td class="metric">50.00%</td>
+      <td class="metric danger">33.33%</td>
+    </tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- 12. Limitations -->
+  <section>
+    <h2>⚠️ Limitations</h2>
+    <ul style="padding-left:20px;line-height:2">
+      <li>topK = 8 — the system returns at most 8 memories per query. Queries with many expected memories are structurally penalised.</li>
+      <li>The expected set reflects reasonable human judgement but is inherently subjective. Some borderline-relevant memories may be missing from EXPECTED.</li>
+      <li>Evaluation covers <strong>eval-user-001</strong> only — results may not generalise to other users, memory densities, or query distributions.</li>
+      <li>Recency decay means very recent (seeded) memories may outscore older but more directly relevant ones.</li>
+      <li>Neo4j graph scoring is additive noise here because the seeded data has no meaningful graph relationships.</li>
+      <li>Embedding quality depends on the configured model (gemini-embedding-001).</li>
+    </ul>
+  </section>
+
+  <!-- 13. Reproducibility -->
+  <section>
+    <h2>🔁 Reproducibility</h2>
+    <div class="method-box">
+      <p>To reproduce this evaluation:</p>
+      <code>npm run evaluate-context-retrieval</code>
+      <p style="margin-top:8px;color:var(--muted)">
+        The ground truth is frozen in <code>tools/eval-ground-truth.js</code>.
+        The evaluation data is persisted in the production PostgreSQL and Qdrant instances.
+        The exact same 160 memories and 40 queries will be used on every run.
+        Only actual retrieval scores may differ slightly due to recency decay over time.
+      </p>
+    </div>
+  </section>
+
+</div>
+<footer>
+  Neura AI — Context Retrieval Evaluation Report · Generated 2026-09-02T06:11:45.284Z · eval-user-001
+</footer>
+</body>
+</html>

@@ -7,6 +7,9 @@
 
 import { memoryOrchestrator } from "./memory-orchestrator.js";
 import { checkChatRateLimit } from "../middleware/rate-limit.js";
+import { logger } from "../lib/logger.js";
+
+const chatLog = logger.child({ component: "chat.service" });
 
 /**
  * Run a full chat turn: rate-limit check → memory pipeline → LLM response.
@@ -47,9 +50,23 @@ export async function runChatTurn(req, body) {
     };
   }
 
+  const resolvedSessionId = body.sessionId || "demo-session";
+  const resolvedUserId    = body.userId    || null;
+
+  // ── TRACE: entry point ──────────────────────────────────────────────────
+  chatLog.info(
+    {
+      sessionId: resolvedSessionId,
+      userId:    resolvedUserId,
+      hasUserId: resolvedUserId !== null,
+      messageSnippet: (body.message || "").slice(0, 60)
+    },
+    "chat.turn.entry"
+  );
+
   const result = await memoryOrchestrator.handleChatTurn({
-    sessionId: body.sessionId || "demo-session",
-    userId:    body.userId    || null,
+    sessionId: resolvedSessionId,
+    userId:    resolvedUserId,
     message:   body.message   || ""
   });
 

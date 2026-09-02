@@ -102,6 +102,10 @@ export async function ensureQdrantReady(vectorSize) {
         method: "PUT",
         body: JSON.stringify({ field_name: "sessionId", field_schema: "keyword" })
       });
+      await callQdrantIgnoringAlreadyExists(`/collections/${collectionName}/index`, {
+        method: "PUT",
+        body: JSON.stringify({ field_name: "userId", field_schema: "keyword" })
+      });
       collectionReady = true;
       return true;
     }
@@ -123,6 +127,14 @@ export async function ensureQdrantReady(vectorSize) {
   await callQdrantIgnoringAlreadyExists(`/collections/${collectionName}/index`, {
     method: "PUT",
     body: JSON.stringify({ field_name: "sessionId", field_schema: "keyword" })
+  });
+
+  // RC1 fix: index userId so we can filter by user scope during retrieval.
+  // This keeps memories from different users isolated while still allowing
+  // a user's own memories from any session to surface via semantic search.
+  await callQdrantIgnoringAlreadyExists(`/collections/${collectionName}/index`, {
+    method: "PUT",
+    body: JSON.stringify({ field_name: "userId", field_schema: "keyword" })
   });
 
   collectionReady = true;
@@ -184,16 +196,24 @@ export async function setQdrantPayload(pointId, payload) {
   });
 }
 
-export async function queryQdrantPoints({ vector, sessionId, limit = 10, strictSession = false }) {
+export async function queryQdrantPoints({ vector, sessionId, userId = null, limit = 10, strictSession = false }) {
   let payload;
 
   try {
-    // When strictSession is true (e.g. dedup checks) we filter to this session only.
-    // When false (default) we search cross-session so personal memories (name, preferences)
-    // can surface in new sessions via semantic similarity.
+    // Filter strategy (in priority order):
+    //   1. strictSession=true  → filter to this session only (dedup checks, etc.)
+    //   2. userId present      → filter to this user's memories (cross-session OK,
+    //                            other users' data stays out)
+    //   3. Neither             → no filter: search entire collection (anonymous/no-user path;
+    //                            kept for backward compatibility)
+    //
+    // The userId filter is the key change for RC1: it eliminates cross-user noise
+    // while still allowing a user's own memories from any session to surface.
     const body = { query: vector, limit, with_payload: true };
     if (strictSession && sessionId) {
       body.filter = { must: [{ key: "sessionId", match: { value: sessionId } }] };
+    } else if (userId) {
+      body.filter = { must: [{ key: "userId", match: { value: userId } }] };
     }
 
     payload = await callQdrant(`/collections/${getCollectionName()}/points/query`, {
@@ -203,6 +223,25 @@ export async function queryQdrantPoints({ vector, sessionId, limit = 10, strictS
   } catch (error) {
     if (isMissingCollectionError(error)) {
       return [];
+    }
+
+    // RC1 graceful fallback: if the userId index doesn't exist yet (e.g. collection
+    // was created before this fix), retry without the userId filter so retrieval
+    // continues to work rather than returning empty results.
+    const msg = error instanceof Error ? error.message : "";
+    if (userId && !strictSession && msg.includes("Index required but not found")) {
+      try {
+        const fallbackBody = { query: vector, limit, with_payload: true };
+        const fallbackPayload = await callQdrant(
+          `/collections/${getCollectionName()}/points/query`,
+          { method: "POST", body: JSON.stringify(fallbackBody) }
+        );
+        return Array.isArray(fallbackPayload?.result?.points)
+          ? fallbackPayload.result.points
+          : [];
+      } catch {
+        return [];
+      }
     }
 
     throw error;

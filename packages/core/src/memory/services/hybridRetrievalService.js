@@ -25,7 +25,7 @@
  *
  *   const retriever = createHybridRetrievalService({
  *     vectorStore,   // implements { findRelevant({query,queryEmbedding,sessionId,userId}) }
- *     keywordStore,  // implements { findRelevant(query, sessionId) }
+ *     keywordStore,  // implements { findRelevant(query, sessionId, userId?) }
  *     graphStore,    // implements { findSimilarMemories(memoryId, limit), ... }
  *     embedText,     // async (text: string) → number[]|null
  *   });
@@ -61,7 +61,7 @@ export { HYBRID_WEIGHTS_DEFAULTS };
  *
  * @param {{
  *   vectorStore?:  { findRelevant(params: object): Promise<object[]> },
- *   keywordStore?: { findRelevant(query: string, sessionId: string): Promise<object[]> },
+ *   keywordStore?: { findRelevant(query: string, sessionId: string, userId?: string|null): Promise<object[]> },
  *   graphStore?:   {
  *     findSimilarMemories(memoryId: string, limit: number): Promise<object[]>,
  *     findMemoriesByKeyword?(sessionId: string, keyword: string, limit: number): Promise<object[]>,

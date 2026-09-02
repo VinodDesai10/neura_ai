@@ -173,6 +173,29 @@ function unregisterSession(sessionId) {
   return sessions;
 }
 
+// ─── Stable user identity ─────────────────────────────────────────────────────
+//
+// A userId is generated once per browser profile and persisted in localStorage.
+// It is distinct from the per-conversation sessionId: sessions come and go, but
+// the userId stays stable so factual memories (e.g. "my name is Vinod") can be
+// retrieved in future conversations even after the session is closed.
+//
+// Key: "neura-user-id"
+
+function getOrCreateUserId() {
+  if (typeof window === "undefined") return null;
+  try {
+    let uid = localStorage.getItem("neura-user-id");
+    if (!uid) {
+      uid = createId();
+      localStorage.setItem("neura-user-id", uid);
+    }
+    return uid;
+  } catch {
+    return null;
+  }
+}
+
 // ─── Date grouping ────────────────────────────────────────────────────────────
 
 function groupSessionsByDate(sessions) {
@@ -246,6 +269,7 @@ export default function HomePage() {
   const healthTimerRef  = useRef(null);
 
   const [sessionId,     setSessionId]     = useState("");
+  const [userId,        setUserId]        = useState(null);
   const [sessions,      setSessions]      = useState([]);
   const [messages,      setMessages]      = useState([WELCOME_MESSAGE]);
   const [draft,         setDraft]         = useState("");
@@ -275,6 +299,7 @@ export default function HomePage() {
     }
 
     setSessionId(sid);
+    setUserId(getOrCreateUserId());
     setMessages(msgs);
     setMemoryState({ activeMemories: [], recentContext: [], contextWindow: null, ...wm });
     setIsHydrated(true);
@@ -393,7 +418,7 @@ export default function HomePage() {
       const res = await fetch(`${apiBaseUrl}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, message: nextUserMessage.content })
+        body: JSON.stringify({ sessionId, userId, message: nextUserMessage.content })
       });
 
       const payload = await res.json();

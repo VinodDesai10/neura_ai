@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="986" style="background:#1a1a2e">
+  <text x="40" y="40" font-size="22" font-weight="bold" fill="#e2e8f0">Neura AI — Context Retrieval Evaluation</text>
+  <text x="40" y="65" font-size="14" fill="#94a3b8">40 queries · 2026-09-02</text>
+
+  <!-- Score cards -->
+  
+    <rect x="40" y="85" width="180" height="85" rx="8" fill="#3b82f622" stroke="#3b82f6" stroke-width="2"/>
+    <text x="55" y="135" font-size="28" font-weight="bold" font-family="monospace" fill="#3b82f6">17.2%</text>
+    <text x="55" y="160" font-size="12" fill="#94a3b8">Micro-Precision</text>
+  
+    <rect x="240" y="85" width="180" height="85" rx="8" fill="#22c55e22" stroke="#22c55e" stroke-width="2"/>
+    <text x="255" y="135" font-size="28" font-weight="bold" font-family="monospace" fill="#22c55e">52.9%</text>
+    <text x="255" y="160" font-size="12" fill="#94a3b8">Micro-Recall</text>
+  
+    <rect x="440" y="85" width="180" height="85" rx="8" fill="#f59e0b22" stroke="#f59e0b" stroke-width="2"/>
+    <text x="455" y="135" font-size="28" font-weight="bold" font-family="monospace" fill="#f59e0b">25.9%</text>
+    <text x="455" y="160" font-size="12" fill="#94a3b8">Micro-F1</text>
+  
+    <rect x="640" y="85" width="180" height="85" rx="8" fill="#a855f722" stroke="#a855f7" stroke-width="2"/>
+    <text x="655" y="135" font-size="28" font-weight="bold" font-family="monospace" fill="#a855f7">31.0%</text>
+    <text x="655" y="160" font-size="12" fill="#94a3b8">Macro-F1</text>
+  
+
+  <!-- TP/FP/FN bar -->
+  <text x="40" y="200" font-size="16" font-weight="bold" fill="#e2e8f0">Aggregate TP / FP / FN</text>
+  <rect x="40" y="210" width="104" height="35" fill="#22c55e"/>
+  <rect x="144" y="210" width="503" height="35" fill="#ef4444"/>
+  <rect x="647" y="210" width="93" height="35" fill="#f59e0b"/>
+  <text x="50" y="233" font-size="12" font-weight="bold" fill="#fff">TP: 55</text>
+  <text x="154" y="233" font-size="12" font-weight="bold" fill="#fff">FP: 265</text>
+  <text x="657" y="233" font-size="12" font-weight="bold" fill="#fff">FN: 49</text>
+
+  <!-- Legend -->
+  <rect x="40"  y="258" width="16" height="16" fill="#22c55e"/>
+  <text x="62"  y="271" font-size="12" fill="#e2e8f0">✓ Correctly retrieved (TP)</text>
+  <rect x="280" y="258" width="16" height="16" fill="#ef4444"/>
+  <text x="302" y="271" font-size="12" fill="#e2e8f0">✗ Incorrectly retrieved (FP)</text>
+  <rect x="560" y="258" width="16" height="16" fill="#f59e0b"/>
+  <text x="582" y="271" font-size="12" fill="#e2e8f0">⚠ Missed relevant (FN)</text>
+
+  <!-- Per-query F1 bar chart title -->
+  <text x="40" y="305" font-size="16" font-weight="bold" fill="#e2e8f0">Per-Query F1 Score</text>
+  <!-- Y-axis gridlines -->
+  <line x1="55" y1="540" x2="1180" y2="540" stroke="#334155" stroke-width="1"/>
+            <text x="10" y="544" font-size="10" fill="#94a3b8">0%</text><line x1="55" y1="485" x2="1180" y2="485" stroke="#334155" stroke-width="1"/>
+            <text x="10" y="489" font-size="10" fill="#94a3b8">25%</text><line x1="55" y1="430" x2="1180" y2="430" stroke="#334155" stroke-width="1"/>
+            <text x="10" y="434" font-size="10" fill="#94a3b8">50%</text><line x1="55" y1="375" x2="1180" y2="375" stroke="#334155" stroke-width="1"/>
+            <text x="10" y="379" font-size="10" fill="#94a3b8">75%</text><line x1="55" y1="320" x2="1180" y2="320" stroke="#334155" stroke-width="1"/>
+            <text x="10" y="324" font-size="10" fill="#94a3b8">100%</text>
+  <rect x="60" y="452" width="54" height="88" fill="#f59e0b"/>
+            <text x="78" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 88 556)">Q01</text>
+<rect x="116" y="500" width="54" height="40" fill="#ef4444"/>
+            <text x="134" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 144 556)">Q02</text>
+<rect x="172" y="491.1111111111111" width="54" height="48.888888888888886" fill="#ef4444"/>
+            <text x="190" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 200 556)">Q03</text>
+<rect x="228" y="496" width="54" height="44" fill="#ef4444"/>
+            <text x="246" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 256 556)">Q04</text>
+<rect x="284" y="460" width="54" height="80" fill="#ef4444"/>
+            <text x="302" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 312 556)">Q05</text>
+<rect x="340" y="430" width="54" height="110" fill="#f59e0b"/>
+            <text x="358" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 368 556)">Q06</text>
+<rect x="396" y="393.33333333333337" width="54" height="146.66666666666666" fill="#f59e0b"/>
+            <text x="414" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 424 556)">Q07</text>
+<rect x="452" y="491.1111111111111" width="54" height="48.888888888888886" fill="#ef4444"/>
+            <text x="470" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 480 556)">Q08</text>
+<rect x="508" y="538" width="54" height="2" fill="#ef4444"/>
+            <text x="526" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 536 556)">Q09</text>
+<rect x="564" y="452" width="54" height="88" fill="#f59e0b"/>
+            <text x="582" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 592 556)">Q10</text>
+<rect x="620" y="491.1111111111111" width="54" height="48.888888888888886" fill="#ef4444"/>
+            <text x="638" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 648 556)">Q11</text>
+<rect x="676" y="496" width="54" height="44" fill="#ef4444"/>
+            <text x="694" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 704 556)">Q12</text>
+<rect x="732" y="452" width="54" height="88" fill="#f59e0b"/>
+            <text x="750" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 760 556)">Q13</text>
+<rect x="788" y="491.1111111111111" width="54" height="48.888888888888886" fill="#ef4444"/>
+            <text x="806" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 816 556)">Q14</text>
+<rect x="844" y="460" width="54" height="80" fill="#ef4444"/>
+            <text x="862" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 872 556)">Q15</text>
+<rect x="900" y="491.1111111111111" width="54" height="48.888888888888886" fill="#ef4444"/>
+            <text x="918" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 928 556)">Q16</text>
+<rect x="956" y="452" width="54" height="88" fill="#f59e0b"/>
+            <text x="974" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 984 556)">Q17</text>
+<rect x="1012" y="452" width="54" height="88" fill="#f59e0b"/>
+            <text x="1030" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 1040 556)">Q18</text>
+<rect x="1068" y="496" width="54" height="44" fill="#ef4444"/>
+            <text x="1086" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 1096 556)">Q19</text>
+<rect x="1124" y="500" width="54" height="40" fill="#ef4444"/>
+            <text x="1142" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 1152 556)">Q20</text>
+<rect x="1180" y="538" width="54" height="2" fill="#ef4444"/>
+            <text x="1198" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 1208 556)">Q21</text>
+<rect x="1236" y="500" width="54" height="40" fill="#ef4444"/>
+            <text x="1254" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 1264 556)">Q22</text>
+<rect x="1292" y="500" width="54" height="40" fill="#ef4444"/>
+            <text x="1310" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 1320 556)">Q23</text>
+<rect x="1348" y="500" width="54" height="40" fill="#ef4444"/>
+            <text x="1366" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 1376 556)">Q24</text>
+<rect x="1404" y="460" width="54" height="80" fill="#ef4444"/>
+            <text x="1422" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 1432 556)">Q25</text>
+<rect x="1460" y="452" width="54" height="88" fill="#f59e0b"/>
+            <text x="1478" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 1488 556)">Q26</text>
+<rect x="1516" y="491.1111111111111" width="54" height="48.888888888888886" fill="#ef4444"/>
+            <text x="1534" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 1544 556)">Q27</text>
+<rect x="1572" y="491.1111111111111" width="54" height="48.888888888888886" fill="#ef4444"/>
+            <text x="1590" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 1600 556)">Q28</text>
+<rect x="1628" y="466.6666666666667" width="54" height="73.33333333333333" fill="#ef4444"/>
+            <text x="1646" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 1656 556)">Q29</text>
+<rect x="1684" y="496" width="54" height="44" fill="#ef4444"/>
+            <text x="1702" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 1712 556)">Q30</text>
+<rect x="1740" y="452" width="54" height="88" fill="#f59e0b"/>
+            <text x="1758" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 1768 556)">Q31</text>
+<rect x="1796" y="506.15384615384613" width="54" height="33.84615384615385" fill="#ef4444"/>
+            <text x="1814" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 1824 556)">Q32</text>
+<rect x="1852" y="538" width="54" height="2" fill="#ef4444"/>
+            <text x="1870" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 1880 556)">Q33</text>
+<rect x="1908" y="370.7692307692308" width="54" height="169.23076923076923" fill="#22c55e"/>
+            <text x="1926" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 1936 556)">Q34</text>
+<rect x="1964" y="466.6666666666667" width="54" height="73.33333333333333" fill="#ef4444"/>
+            <text x="1982" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 1992 556)">Q35</text>
+<rect x="2020" y="538" width="54" height="2" fill="#ef4444"/>
+            <text x="2038" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 2048 556)">Q36</text>
+<rect x="2076" y="538" width="54" height="2" fill="#ef4444"/>
+            <text x="2094" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 2104 556)">Q37</text>
+<rect x="2132" y="538" width="54" height="2" fill="#ef4444"/>
+            <text x="2150" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 2160 556)">Q38</text>
+<rect x="2188" y="538" width="54" height="2" fill="#ef4444"/>
+            <text x="2206" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 2216 556)">Q39</text>
+<rect x="2244" y="466.6666666666667" width="54" height="73.33333333333333" fill="#ef4444"/>
+            <text x="2262" y="560" font-size="8" fill="#94a3b8" transform="rotate(-45 2272 556)">Q40</text>
+
+  <!-- Category breakdown -->
+  <text x="40" y="640" font-size="16" font-weight="bold" fill="#e2e8f0">Category Breakdown</text>
+  <text x="40" y="650" font-size="11" fill="#e2e8f0">exact-factual-recall</text>
+            <text x="400" y="650" font-size="11" fill="#94a3b8">TP:5 FP:27 FN:3 · P:16% R:63% F1:25%</text>
+<text x="40" y="672" font-size="11" fill="#e2e8f0">project-technical-context</text>
+            <text x="400" y="672" font-size="11" fill="#94a3b8">TP:12 FP:36 FN:4 · P:25% R:75% F1:38%</text>
+<text x="40" y="694" font-size="11" fill="#e2e8f0">semantic-paraphrased-recall</text>
+            <text x="400" y="694" font-size="11" fill="#94a3b8">TP:5 FP:27 FN:1 · P:16% R:83% F1:26%</text>
+<text x="40" y="716" font-size="11" fill="#e2e8f0">episodic-recall</text>
+            <text x="400" y="716" font-size="11" fill="#94a3b8">TP:9 FP:39 FN:4 · P:19% R:69% F1:30%</text>
+<text x="40" y="738" font-size="11" fill="#e2e8f0">goals-tasks</text>
+            <text x="400" y="738" font-size="11" fill="#94a3b8">TP:3 FP:29 FN:9 · P:9% R:25% F1:14%</text>
+<text x="40" y="760" font-size="11" fill="#e2e8f0">dates-events</text>
+            <text x="400" y="760" font-size="11" fill="#94a3b8">TP:6 FP:26 FN:1 · P:19% R:86% F1:31%</text>
+<text x="40" y="782" font-size="11" fill="#e2e8f0">recency-recent</text>
+            <text x="400" y="782" font-size="11" fill="#94a3b8">TP:2 FP:6 FN:2 · P:25% R:50% F1:33%</text>
+<text x="40" y="804" font-size="11" fill="#e2e8f0">recency-old</text>
+            <text x="400" y="804" font-size="11" fill="#94a3b8">TP:3 FP:13 FN:1 · P:19% R:75% F1:30%</text>
+<text x="40" y="826" font-size="11" fill="#e2e8f0">same-topic-cluster</text>
+            <text x="400" y="826" font-size="11" fill="#94a3b8">TP:1 FP:15 FN:9 · P:6% R:10% F1:8%</text>
+<text x="40" y="848" font-size="11" fill="#e2e8f0">multi-memory-complex</text>
+            <text x="400" y="848" font-size="11" fill="#94a3b8">TP:9 FP:15 FN:4 · P:38% R:69% F1:49%</text>
+<text x="40" y="870" font-size="11" fill="#e2e8f0">noise-distractor</text>
+            <text x="400" y="870" font-size="11" fill="#94a3b8">TP:0 FP:16 FN:5 · P:0% R:0% F1:0%</text>
+<text x="40" y="892" font-size="11" fill="#e2e8f0">no-relevant-memory</text>
+            <text x="400" y="892" font-size="11" fill="#94a3b8">TP:0 FP:8 FN:1 · P:0% R:0% F1:0%</text>
+<text x="40" y="914" font-size="11" fill="#e2e8f0">cross-session-multi</text>
+            <text x="400" y="914" font-size="11" fill="#94a3b8">TP:0 FP:8 FN:5 · P:0% R:0% F1:0%</text>
+</svg>

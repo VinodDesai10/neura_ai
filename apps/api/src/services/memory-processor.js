@@ -260,7 +260,11 @@ export async function processEventIntoMemories(job) {
     return processSummariseJob(job);
   }
 
-  // Default: treat the job as a process-event-into-memories job
+  // Default: treat the job as a process-event-into-memories job.
+  // Merge the top-level job.userId onto the event so that processEventJob
+  // can always read event.userId reliably, even if rawEventVault.append
+  // produced an event object that was created before the userId field was added.
   const event = job.event || job;
-  return processEventJob(event);
+  const userId = event.userId || job.userId || null;
+  return processEventJob({ ...event, userId });
 }

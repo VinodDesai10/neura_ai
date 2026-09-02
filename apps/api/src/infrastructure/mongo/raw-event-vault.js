@@ -5,10 +5,11 @@ import { linkEventToSession } from "../neo4j/relationship-graph-store.js";
 const rawEvents = [];
 
 export const rawEventVault = {
-  async append({ sessionId, role, content }) {
+  async append({ sessionId, userId = null, role, content }) {
     const event = {
       id: crypto.randomUUID(),
       sessionId,
+      userId: userId || null,
       role,
       content,
       createdAt: new Date().toISOString()

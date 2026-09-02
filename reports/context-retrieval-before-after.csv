@@ -1,0 +1,43 @@
+QueryID,Category,Query,Expected,BeforeTP,BeforeFP,BeforeFN,BeforeP%,BeforeR%,BeforeF1%,AfterTP,AfterFP,AfterFN,AfterP%,AfterR%,AfterF1%,DeltaTP
+Q01,exact-factual-recall,What is my name and where do I live?,2,0,4,2,,,,2,6,0,25.00,100.00,40.00,+2
+Q02,exact-factual-recall,Tell me about my educational background and work history.,3,0,4,3,,,,1,7,2,12.50,33.33,18.18,+1
+Q03,exact-factual-recall,What programming languages do I use and for how long?,1,0,2,1,,,,1,7,0,12.50,100.00,22.22,+1
+Q04,exact-factual-recall,What are my dietary restrictions and food preferences?,2,0,5,2,,,,1,7,1,12.50,50.00,20.00,+1
+Q05,project-technical-context,What project am I currently working on at PaySwift?,3,0,8,3,,,,2,6,1,25.00,66.67,36.36,+2
+Q06,project-technical-context,What is the tech stack and infrastructure for the PaySwift backend?,4,0,8,4,,,,3,5,1,37.50,75.00,50.00,+3
+Q07,project-technical-context,What is the fraud detection service and how does it work?,4,1,7,3,12.50,25.00,16.67,4,4,0,50.00,100.00,66.67,+3
+Q08,project-technical-context,What payment methods does PaySwift support?,1,0,8,1,,,,1,7,0,12.50,100.00,22.22,+1
+Q09,project-technical-context,What tools and frameworks do I use for testing?,2,0,5,2,,,,0,8,2,0.00,0.00,,+0
+Q10,project-technical-context,What monitoring and observability tools does PaySwift use?,2,0,8,2,,,,2,6,0,25.00,100.00,40.00,+2
+Q11,semantic-paraphrased-recall,What consistency challenges do payment systems face?,1,1,7,0,12.50,100.00,22.22,1,7,0,12.50,100.00,22.22,+0
+Q12,semantic-paraphrased-recall,How can I improve the reliability of my TypeScript API boundaries?,2,1,7,1,12.50,50.00,20.00,1,7,1,12.50,50.00,20.00,+0
+Q13,semantic-paraphrased-recall,What do I need to know about database connection management under load?,2,1,7,1,12.50,50.00,20.00,2,6,0,25.00,100.00,40.00,+1
+Q14,semantic-paraphrased-recall,What happened during the security incident with our OAuth implementation?,1,1,7,0,12.50,100.00,22.22,1,7,0,12.50,100.00,22.22,+0
+Q15,episodic-recall,What production incidents have we had recently?,3,2,6,1,25.00,66.67,36.36,2,6,1,25.00,66.67,36.36,+0
+Q16,episodic-recall,What did we discuss in the last sprint retrospective?,1,1,7,0,12.50,100.00,22.22,1,7,0,12.50,100.00,22.22,+0
+Q17,episodic-recall,What is the status of new team members I recently onboarded?,2,1,7,1,12.50,50.00,20.00,1,7,1,12.50,50.00,20.00,+0
+Q18,episodic-recall,Tell me about the BNPL feature we shipped.,2,1,7,1,12.50,50.00,20.00,2,6,0,25.00,100.00,40.00,+1
+Q19,episodic-recall,What is the update from my 1:1 with my manager?,2,1,7,1,12.50,50.00,20.00,1,7,1,12.50,50.00,20.00,+0
+Q20,episodic-recall,What architectural decisions have we made recently?,3,2,6,1,25.00,66.67,36.36,1,7,2,12.50,33.33,18.18,-1
+Q21,goals-tasks,What are my current engineering goals for this quarter?,3,0,8,3,,,,0,8,3,0.00,0.00,,+0
+Q22,goals-tasks,What certifications and courses am I working toward?,3,1,7,2,12.50,33.33,18.18,1,7,2,12.50,33.33,18.18,+0
+Q23,goals-tasks,What engineering improvements am I planning to make to our infrastructure?,3,0,6,3,,,,1,7,2,12.50,33.33,18.18,+1
+Q24,goals-tasks,What personal fitness goals am I working on?,3,1,7,2,12.50,33.33,18.18,1,7,2,12.50,33.33,18.18,+0
+Q25,dates-events,What important events or deadlines do I have coming up in November?,3,3,5,0,37.50,100.00,54.55,2,6,1,25.00,66.67,36.36,-1
+Q26,dates-events,What is the status of hiring Megha and when does she join?,2,2,6,0,25.00,100.00,40.00,2,6,0,25.00,100.00,40.00,+0
+Q27,dates-events,When is the company offsite and what am I presenting?,1,1,7,0,12.50,100.00,22.22,1,7,0,12.50,100.00,22.22,+0
+Q28,dates-events,What trip have I planned for the end of the year?,1,1,7,0,12.50,100.00,22.22,1,7,0,12.50,100.00,22.22,+0
+Q29,recency-recent,What have I been working on today or in the last few hours?,4,1,6,3,14.29,25.00,18.18,2,6,2,25.00,50.00,33.33,+1
+Q30,recency-old,When did I join PaySwift and what was it like then?,2,0,8,2,,,,1,7,1,12.50,50.00,20.00,+1
+Q31,recency-old,What major infrastructure migrations have we done in the past year?,2,2,6,0,25.00,100.00,40.00,2,6,0,25.00,100.00,40.00,+0
+Q32,same-topic-cluster,What are my diet and nutrition habits?,5,0,5,5,,,,1,7,4,12.50,20.00,15.38,+1
+Q33,same-topic-cluster,What is my health and fitness routine?,5,0,5,5,,,,0,8,5,0.00,0.00,,+0
+Q34,multi-memory-complex,"What is the state of my fraud detection work — what exists, what is broken, and what needs to change?",5,3,5,2,37.50,60.00,46.15,5,3,0,62.50,100.00,76.92,+2
+Q35,multi-memory-complex,What is my career progression and promotion status?,4,0,8,4,,,,2,6,2,25.00,50.00,33.33,+2
+Q36,noise-distractor,What do I know about quantum computing?,1,0,8,1,,,,0,8,1,0.00,0.00,,+0
+Q37,noise-distractor,Tell me about my personal interests and hobbies outside work.,4,0,8,4,,,,0,8,4,0.00,0.00,,+0
+Q38,no-relevant-memory,What is the recipe for making sourdough bread?,1,0,8,1,,,,0,8,1,0.00,0.00,,+0
+Q39,cross-session-multi,What are all my upcoming important deadlines and milestones before year-end?,5,1,7,4,12.50,20.00,15.38,0,8,5,0.00,0.00,,-1
+Q40,multi-memory-complex,What has my team been building and what did we recently ship?,4,1,7,3,12.50,25.00,16.67,2,6,2,25.00,50.00,33.33,+1
+
+AGGREGATE,,,104,30,261,74,10.31,28.85,15.19,54,266,50,16.88,51.92,25.47,+24

@@ -141,6 +141,7 @@ export const vectorMemoryStore = {
       const points = await queryQdrantPoints({
         vector:    queryEmbedding,
         sessionId,
+        userId:    userId || null,   // RC1 fix: scope search to this user's memories
         limit:     cfg.topK * 3   // Fetch 3× to give dedup room
       });
 
@@ -177,7 +178,14 @@ export const vectorMemoryStore = {
         })
         .filter((e) => e.score > 0.05)
         .sort((a, b) => b.score - a.score)
-        .slice(0, cfg.topK)
+        // RC4: Return topK*2 candidates to the combined ranker instead of topK.
+        // The Qdrant store previously truncated to topK=8 here, which caused
+        // regressions after RC1 added the userId filter: relevant episodic
+        // memories ranked 9-16 in Qdrant were eliminated before the final
+        // combined ranker (memoryRanker) could consider them alongside Postgres
+        // results.  By deferring the hard topK cut to memoryRanker we let the
+        // global ranker pick the best topK from a richer, deduplicated pool.
+        .slice(0, cfg.topK * 2)
         .map((e) => e.memory);
     }
 

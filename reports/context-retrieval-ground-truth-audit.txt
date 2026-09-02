@@ -1,0 +1,727 @@
+NEURA AI — CONTEXT RETRIEVAL EVALUATION — GROUND-TRUTH AUDIT
+======================================================================
+Generated   : 2026-09-02T06:11:45.284Z
+Total queries: 40
+Total expected memory items: 104
+
+IMPORTANT: This file was generated from eval-ground-truth.js which was
+committed BEFORE any retrieval was run. EXPECTED sets are independent
+of retrieval results and cannot be retrospectively modified.
+
+======================================================================
+
+QUERY Q01 [exact-factual-recall]
+Query: "What is my name and where do I live?"
+Session: eval-session-personal
+
+EXPECTED memories (defined before retrieval):
+  eval-f001 — Directly states user's name (Arjun Mehta) and age.
+  eval-f002 — Directly states user's location (Koramangala, Bengaluru).
+
+FETCHED (actual system output): eval-e008, eval-f001, eval-f002, eval-f007, eval-f021, eval-e033, eval-e051, eval-f003
+TP: eval-f001, eval-f002
+FP: eval-e008, eval-f007, eval-f021, eval-e033, eval-e051, eval-f003
+FN: (none)
+Precision: 25.00%
+Recall   : 100.00%
+F1       : 40.00%
+----------------------------------------------------------------------
+
+QUERY Q02 [exact-factual-recall]
+Query: "Tell me about my educational background and work history."
+Session: eval-session-personal
+
+EXPECTED memories (defined before retrieval):
+  eval-f018 — States B.Tech CS from IIT Bombay 2015.
+  eval-f003 — States current job: senior SE at PaySwift fintech startup.
+  eval-f060 — States when user joined PaySwift (2 years ago as senior engineer).
+
+FETCHED (actual system output): eval-e008, eval-f021, eval-f003, eval-f007, eval-e033, eval-f001, eval-e047, eval-e035
+TP: eval-f003
+FP: eval-e008, eval-f021, eval-f007, eval-e033, eval-f001, eval-e047, eval-e035
+FN: eval-f018, eval-f060
+Precision: 12.50%
+Recall   : 33.33%
+F1       : 18.18%
+----------------------------------------------------------------------
+
+QUERY Q03 [exact-factual-recall]
+Query: "What programming languages do I use and for how long?"
+Session: eval-session-personal
+
+EXPECTED memories (defined before retrieval):
+  eval-f004 — Directly states Python and TypeScript for 8+ years.
+
+FETCHED (actual system output): eval-e008, eval-f004, eval-f058, eval-f021, eval-e033, eval-f007, eval-f003, eval-f001
+TP: eval-f004
+FP: eval-e008, eval-f058, eval-f021, eval-e033, eval-f007, eval-f003, eval-f001
+FN: (none)
+Precision: 12.50%
+Recall   : 100.00%
+F1       : 22.22%
+----------------------------------------------------------------------
+
+QUERY Q04 [exact-factual-recall]
+Query: "What are my dietary restrictions and food preferences?"
+Session: eval-session-personal
+
+EXPECTED memories (defined before retrieval):
+  eval-f007 — Directly states user is vegetarian and allergic to peanuts.
+  eval-f006 — States favourite breakfast: idli with sambar.
+
+FETCHED (actual system output): eval-f007, eval-e008, eval-f058, eval-e033, eval-e010, eval-e047, eval-e037, eval-e052
+TP: eval-f007
+FP: eval-e008, eval-f058, eval-e033, eval-e010, eval-e047, eval-e037, eval-e052
+FN: eval-f006
+Precision: 12.50%
+Recall   : 50.00%
+F1       : 20.00%
+----------------------------------------------------------------------
+
+QUERY Q05 [project-technical-context]
+Query: "What project am I currently working on at PaySwift?"
+Session: eval-session-projects
+
+EXPECTED memories (defined before retrieval):
+  eval-f021 — Directly states user is building payment gateway SDK.
+  eval-f022 — Describes SDK technology stack (TypeScript, React, Vue).
+  eval-f026 — States user owns the fraud detection microservice.
+
+FETCHED (actual system output): eval-f021, eval-f024, eval-f023, eval-f022, eval-f038, eval-f025, eval-f040, eval-f037
+TP: eval-f021, eval-f022
+FP: eval-f024, eval-f023, eval-f038, eval-f025, eval-f040, eval-f037
+FN: eval-f026
+Precision: 25.00%
+Recall   : 66.67%
+F1       : 36.36%
+----------------------------------------------------------------------
+
+QUERY Q06 [project-technical-context]
+Query: "What is the tech stack and infrastructure for the PaySwift backend?"
+Session: eval-session-projects
+
+EXPECTED memories (defined before retrieval):
+  eval-f023 — Describes PostgreSQL + Redis stack for transactions and caching.
+  eval-f025 — Describes AWS ECS Fargate deployment with auto-scaling.
+  eval-f024 — Describes JWT authentication with 15-min TTL.
+  eval-f039 — States 99.95% availability SLO for payment API.
+
+FETCHED (actual system output): eval-f023, eval-f021, eval-f025, eval-f024, eval-f022, eval-f040, eval-f037, eval-f038
+TP: eval-f023, eval-f025, eval-f024
+FP: eval-f021, eval-f022, eval-f040, eval-f037, eval-f038
+FN: eval-f039
+Precision: 37.50%
+Recall   : 75.00%
+F1       : 50.00%
+----------------------------------------------------------------------
+
+QUERY Q07 [project-technical-context]
+Query: "What is the fraud detection service and how does it work?"
+Session: eval-session-projects
+
+EXPECTED memories (defined before retrieval):
+  eval-f026 — States user owns the fraud detection microservice with rule-based engine.
+  eval-f030 — States fraud detection handles ~50K transactions/day.
+  eval-s002 — Semantic memory about rule-based fraud detection and ML improvements.
+  eval-f054 — Goal to migrate fraud detection rules to OPA policy-as-code.
+
+FETCHED (actual system output): eval-f030, eval-f026, eval-e051, eval-e001, eval-s002, eval-f054, eval-f021, eval-e034
+TP: eval-f026, eval-f030, eval-s002, eval-f054
+FP: eval-e051, eval-e001, eval-f021, eval-e034
+FN: (none)
+Precision: 50.00%
+Recall   : 100.00%
+F1       : 66.67%
+----------------------------------------------------------------------
+
+QUERY Q08 [project-technical-context]
+Query: "What payment methods does PaySwift support?"
+Session: eval-session-projects
+
+EXPECTED memories (defined before retrieval):
+  eval-f037 — Directly lists supported payment methods: UPI, credit/debit cards, BNPL.
+
+FETCHED (actual system output): eval-f037, eval-f021, eval-f024, eval-f023, eval-f022, eval-f040, eval-f025, eval-e039
+TP: eval-f037
+FP: eval-f021, eval-f024, eval-f023, eval-f022, eval-f040, eval-f025, eval-e039
+FN: (none)
+Precision: 12.50%
+Recall   : 100.00%
+F1       : 22.22%
+----------------------------------------------------------------------
+
+QUERY Q09 [project-technical-context]
+Query: "What tools and frameworks do I use for testing?"
+Session: eval-session-projects
+
+EXPECTED memories (defined before retrieval):
+  eval-f036 — Directly states Vitest for unit tests and Playwright for E2E.
+  eval-f028 — Mentions test coverage target 80%, currently 73%.
+
+FETCHED (actual system output): eval-f058, eval-e008, eval-e051, eval-f021, eval-e050, eval-e010, eval-e033, eval-f026
+TP: (none)
+FP: eval-f058, eval-e008, eval-e051, eval-f021, eval-e050, eval-e010, eval-e033, eval-f026
+FN: eval-f036, eval-f028
+Precision: 0.00%
+Recall   : 0.00%
+F1       : N/A
+----------------------------------------------------------------------
+
+QUERY Q10 [project-technical-context]
+Query: "What monitoring and observability tools does PaySwift use?"
+Session: eval-session-projects
+
+EXPECTED memories (defined before retrieval):
+  eval-f029 — Directly states Datadog for monitoring with latency/error/payment dashboards.
+  eval-f040 — States OpenTelemetry for distributed tracing.
+
+FETCHED (actual system output): eval-f040, eval-f023, eval-f021, eval-f024, eval-f025, eval-f022, eval-f029, eval-f037
+TP: eval-f029, eval-f040
+FP: eval-f023, eval-f021, eval-f024, eval-f025, eval-f022, eval-f037
+FN: (none)
+Precision: 25.00%
+Recall   : 100.00%
+F1       : 40.00%
+----------------------------------------------------------------------
+
+QUERY Q11 [semantic-paraphrased-recall]
+Query: "What consistency challenges do payment systems face?"
+Session: eval-session-projects
+
+EXPECTED memories (defined before retrieval):
+  eval-s001 — Semantic memory about consistency guarantees, idempotency keys, distributed locks in payments.
+
+FETCHED (actual system output): eval-s001, eval-f021, eval-f039, eval-e045, eval-e051, eval-e010, eval-f023, eval-e022
+TP: eval-s001
+FP: eval-f021, eval-f039, eval-e045, eval-e051, eval-e010, eval-f023, eval-e022
+FN: (none)
+Precision: 12.50%
+Recall   : 100.00%
+F1       : 22.22%
+----------------------------------------------------------------------
+
+QUERY Q12 [semantic-paraphrased-recall]
+Query: "How can I improve the reliability of my TypeScript API boundaries?"
+Session: eval-session-projects
+
+EXPECTED memories (defined before retrieval):
+  eval-s003 — Semantic memory about TypeScript strict mode and zod runtime validation for API type safety.
+  eval-f004 — States user's 8+ years TypeScript experience (context).
+
+FETCHED (actual system output): eval-s003, eval-e010, eval-f058, eval-f022, eval-e051, eval-e004, eval-f024, eval-f021
+TP: eval-s003
+FP: eval-e010, eval-f058, eval-f022, eval-e051, eval-e004, eval-f024, eval-f021
+FN: eval-f004
+Precision: 12.50%
+Recall   : 50.00%
+F1       : 20.00%
+----------------------------------------------------------------------
+
+QUERY Q13 [semantic-paraphrased-recall]
+Query: "What do I need to know about database connection management under load?"
+Session: eval-session-projects
+
+EXPECTED memories (defined before retrieval):
+  eval-s004 — Semantic memory about connection pooling (PgBouncer) to prevent connection storms.
+  eval-f023 — States PaySwift uses PostgreSQL — directly relevant context.
+
+FETCHED (actual system output): eval-s004, eval-e051, eval-e022, eval-f058, eval-e010, eval-e004, eval-e034, eval-f023
+TP: eval-s004, eval-f023
+FP: eval-e051, eval-e022, eval-f058, eval-e010, eval-e004, eval-e034
+FN: (none)
+Precision: 25.00%
+Recall   : 100.00%
+F1       : 40.00%
+----------------------------------------------------------------------
+
+QUERY Q14 [semantic-paraphrased-recall]
+Query: "What happened during the security incident with our OAuth implementation?"
+Session: eval-session-history
+
+EXPECTED memories (defined before retrieval):
+  eval-e012 — Directly describes the PKCE bypass vulnerability in OAuth flow.
+
+FETCHED (actual system output): eval-e012, eval-f058, eval-e051, eval-e010, eval-f024, eval-e014, eval-e002, eval-e001
+TP: eval-e012
+FP: eval-f058, eval-e051, eval-e010, eval-f024, eval-e014, eval-e002, eval-e001
+FN: (none)
+Precision: 12.50%
+Recall   : 100.00%
+F1       : 22.22%
+----------------------------------------------------------------------
+
+QUERY Q15 [episodic-recall]
+Query: "What production incidents have we had recently?"
+Session: eval-session-history
+
+EXPECTED memories (defined before retrieval):
+  eval-e002 — Production incident: payment webhook timing out due to missing DB index.
+  eval-e014 — December deployment caused 45-minute outage due to misconfigured feature flag.
+  eval-e016 — Race condition in webhook dedup logic causing double-processed payments.
+
+FETCHED (actual system output): eval-f058, eval-e050, eval-e051, eval-e004, eval-e002, eval-e034, eval-e014, eval-e010
+TP: eval-e002, eval-e014
+FP: eval-f058, eval-e050, eval-e051, eval-e004, eval-e034, eval-e010
+FN: eval-e016
+Precision: 25.00%
+Recall   : 66.67%
+F1       : 36.36%
+----------------------------------------------------------------------
+
+QUERY Q16 [episodic-recall]
+Query: "What did we discuss in the last sprint retrospective?"
+Session: eval-session-history
+
+EXPECTED memories (defined before retrieval):
+  eval-e004 — Directly describes sprint retrospective discussion about slow PR review cycles.
+
+FETCHED (actual system output): eval-e004, eval-e008, eval-e050, eval-e051, eval-e021, eval-e010, eval-e001, eval-e033
+TP: eval-e004
+FP: eval-e008, eval-e050, eval-e051, eval-e021, eval-e010, eval-e001, eval-e033
+FN: (none)
+Precision: 12.50%
+Recall   : 100.00%
+F1       : 22.22%
+----------------------------------------------------------------------
+
+QUERY Q17 [episodic-recall]
+Query: "What is the status of new team members I recently onboarded?"
+Session: eval-session-history
+
+EXPECTED memories (defined before retrieval):
+  eval-e005 — States Nikhil was onboarded last Tuesday, ramping up on payment service.
+  eval-e035 — States Megha (senior backend, Kafka/Go) was hired and joins next month.
+
+FETCHED (actual system output): eval-e008, eval-e047, eval-e005, eval-e050, eval-e004, eval-e034, eval-e051, eval-e035
+TP: eval-e005, eval-e035
+FP: eval-e008, eval-e047, eval-e050, eval-e004, eval-e034, eval-e051
+FN: (none)
+Precision: 25.00%
+Recall   : 100.00%
+F1       : 40.00%
+----------------------------------------------------------------------
+
+QUERY Q18 [episodic-recall]
+Query: "Tell me about the BNPL feature we shipped."
+Session: eval-session-history
+
+EXPECTED memories (defined before retrieval):
+  eval-e006 — Directly describes BNPL launch to production after 3 months development.
+  eval-f037 — Factual: payment gateway supports BNPL.
+
+FETCHED (actual system output): eval-e006, eval-e051, eval-e010, eval-f021, eval-f058, eval-e002, eval-f037, eval-f022
+TP: eval-e006, eval-f037
+FP: eval-e051, eval-e010, eval-f021, eval-f058, eval-e002, eval-f022
+FN: (none)
+Precision: 25.00%
+Recall   : 100.00%
+F1       : 40.00%
+----------------------------------------------------------------------
+
+QUERY Q19 [episodic-recall]
+Query: "What is the update from my 1:1 with my manager?"
+Session: eval-session-history
+
+EXPECTED memories (defined before retrieval):
+  eval-e008 — Directly describes 1:1 with Anjali mentioning on-track staff engineer promotion.
+  eval-e019 — Annual performance review 4.2/5 qualifying for 15% salary increment.
+
+FETCHED (actual system output): eval-e008, eval-e047, eval-e004, eval-e021, eval-e010, eval-e051, eval-e033, eval-e017
+TP: eval-e008
+FP: eval-e047, eval-e004, eval-e021, eval-e010, eval-e051, eval-e033, eval-e017
+FN: eval-e019
+Precision: 12.50%
+Recall   : 50.00%
+F1       : 20.00%
+----------------------------------------------------------------------
+
+QUERY Q20 [episodic-recall]
+Query: "What architectural decisions have we made recently?"
+Session: eval-session-history
+
+EXPECTED memories (defined before retrieval):
+  eval-e028 — Team adopted ADR practice for documenting architectural decisions.
+  eval-e030 — Added circuit breakers for all third-party payment integrations post-incident.
+  eval-e009 — Completed MongoDB→PostgreSQL migration for transactions service.
+
+FETCHED (actual system output): eval-e001, eval-f058, eval-e051, eval-e004, eval-f021, eval-e028, eval-f052, eval-f044
+TP: eval-e028
+FP: eval-e001, eval-f058, eval-e051, eval-e004, eval-f021, eval-f052, eval-f044
+FN: eval-e030, eval-e009
+Precision: 12.50%
+Recall   : 33.33%
+F1       : 18.18%
+----------------------------------------------------------------------
+
+QUERY Q21 [goals-tasks]
+Query: "What are my current engineering goals for this quarter?"
+Session: eval-session-goals
+
+EXPECTED memories (defined before retrieval):
+  eval-f041 — Primary Q3 goal: reduce payment failure rate from 2.1% to < 1.5%.
+  eval-f043 — Task: hire 2 senior backend engineers by Q3 end.
+  eval-f044 — Plan: refactor payment routing logic before next major release.
+
+FETCHED (actual system output): eval-e008, eval-e050, eval-e051, eval-e003, eval-f021, eval-e033, eval-e004, eval-e045
+TP: (none)
+FP: eval-e008, eval-e050, eval-e051, eval-e003, eval-f021, eval-e033, eval-e004, eval-e045
+FN: eval-f041, eval-f043, eval-f044
+Precision: 0.00%
+Recall   : 0.00%
+F1       : N/A
+----------------------------------------------------------------------
+
+QUERY Q22 [goals-tasks]
+Query: "What certifications and courses am I working toward?"
+Session: eval-session-goals
+
+EXPECTED memories (defined before retrieval):
+  eval-f042 — Goal: AWS Solutions Architect Professional cert by year-end.
+  eval-e031 — Booked AWS architect exam for October 15.
+  eval-f045 — Reading 1 tech book/month; currently reading DDIA by Kleppmann.
+
+FETCHED (actual system output): eval-e008, eval-e050, eval-f021, eval-e033, eval-f058, eval-e047, eval-f042, eval-f052
+TP: eval-f042
+FP: eval-e008, eval-e050, eval-f021, eval-e033, eval-f058, eval-e047, eval-f052
+FN: eval-e031, eval-f045
+Precision: 12.50%
+Recall   : 33.33%
+F1       : 18.18%
+----------------------------------------------------------------------
+
+QUERY Q23 [goals-tasks]
+Query: "What engineering improvements am I planning to make to our infrastructure?"
+Session: eval-session-goals
+
+EXPECTED memories (defined before retrieval):
+  eval-f052 — Plan: add structured logging with correlation IDs across all services.
+  eval-f050 — Task: set up on-call rotation for payment team.
+  eval-f046 — Task: improve API documentation coverage from 40%.
+
+FETCHED (actual system output): eval-e008, eval-f058, eval-f021, eval-e051, eval-e010, eval-e034, eval-f052, eval-f044
+TP: eval-f052
+FP: eval-e008, eval-f058, eval-f021, eval-e051, eval-e010, eval-e034, eval-f044
+FN: eval-f050, eval-f046
+Precision: 12.50%
+Recall   : 33.33%
+F1       : 18.18%
+----------------------------------------------------------------------
+
+QUERY Q24 [goals-tasks]
+Query: "What personal fitness goals am I working on?"
+Session: eval-session-goals
+
+EXPECTED memories (defined before retrieval):
+  eval-f047 — Training for marathon in November, running 5 days/week.
+  eval-e033 — Ran half-marathon in 2:08 as a training milestone.
+  eval-e044 — Registered for Bengaluru marathon November 17, bib #4523.
+
+FETCHED (actual system output): eval-e008, eval-e033, eval-f021, eval-e050, eval-e037, eval-f007, eval-f041, eval-e047
+TP: eval-e033
+FP: eval-e008, eval-f021, eval-e050, eval-e037, eval-f007, eval-f041, eval-e047
+FN: eval-f047, eval-e044
+Precision: 12.50%
+Recall   : 33.33%
+F1       : 18.18%
+----------------------------------------------------------------------
+
+QUERY Q25 [dates-events]
+Query: "What important events or deadlines do I have coming up in November?"
+Session: eval-session-events
+
+EXPECTED memories (defined before retrieval):
+  eval-e037 — Father's 65th birthday on November 3.
+  eval-e044 — Bengaluru marathon on November 17.
+  eval-e041 — PCI-DSS audit November 10-12; documentation due November 1.
+
+FETCHED (actual system output): eval-e008, eval-e037, eval-e050, eval-e041, eval-e047, eval-e046, eval-e033, eval-f058
+TP: eval-e037, eval-e041
+FP: eval-e008, eval-e050, eval-e047, eval-e046, eval-e033, eval-f058
+FN: eval-e044
+Precision: 25.00%
+Recall   : 66.67%
+F1       : 36.36%
+----------------------------------------------------------------------
+
+QUERY Q26 [dates-events]
+Query: "What is the status of hiring Megha and when does she join?"
+Session: eval-session-events
+
+EXPECTED memories (defined before retrieval):
+  eval-e035 — States Megha was hired (Kafka/Go experience) to join next month.
+  eval-e047 — States Megha joins October 1; onboarding plan due September 25.
+
+FETCHED (actual system output): eval-e035, eval-e047, eval-e008, eval-e051, eval-e005, eval-f058, eval-e010, eval-f021
+TP: eval-e035, eval-e047
+FP: eval-e008, eval-e051, eval-e005, eval-f058, eval-e010, eval-f021
+FN: (none)
+Precision: 25.00%
+Recall   : 100.00%
+F1       : 40.00%
+----------------------------------------------------------------------
+
+QUERY Q27 [dates-events]
+Query: "When is the company offsite and what am I presenting?"
+Session: eval-session-events
+
+EXPECTED memories (defined before retrieval):
+  eval-e049 — Company offsite Coorg October 25-27; user presenting 2025 tech roadmap.
+
+FETCHED (actual system output): eval-e008, eval-e049, eval-e017, eval-e047, eval-e037, eval-e050, eval-e051, eval-e004
+TP: eval-e049
+FP: eval-e008, eval-e017, eval-e047, eval-e037, eval-e050, eval-e051, eval-e004
+FN: (none)
+Precision: 12.50%
+Recall   : 100.00%
+F1       : 22.22%
+----------------------------------------------------------------------
+
+QUERY Q28 [dates-events]
+Query: "What trip have I planned for the end of the year?"
+Session: eval-session-events
+
+EXPECTED memories (defined before retrieval):
+  eval-e043 — Japan trip booked December 20 – January 1; first visit to Japan.
+
+FETCHED (actual system output): eval-e008, eval-e037, eval-e043, eval-e050, eval-f058, eval-f021, eval-e047, eval-e033
+TP: eval-e043
+FP: eval-e008, eval-e037, eval-e050, eval-f058, eval-f021, eval-e047, eval-e033
+FN: (none)
+Precision: 12.50%
+Recall   : 100.00%
+F1       : 22.22%
+----------------------------------------------------------------------
+
+QUERY Q29 [recency-recent]
+Query: "What have I been working on today or in the last few hours?"
+Session: eval-session-recency
+
+EXPECTED memories (defined before retrieval):
+  eval-f056 — Just approved BNPL refund flow PR for merge (1h ago).
+  eval-f057 — Sent weekly engineering update email this morning (2h ago).
+  eval-e051 — Stand-up: velocity attack fraud rule ready for QA (3h ago).
+  eval-f058 — Fixed broken CI test blocking all PR merges (5h ago).
+
+FETCHED (actual system output): eval-e008, eval-f058, eval-f021, eval-e050, eval-e051, eval-e033, eval-e004, eval-e021
+TP: eval-e051, eval-f058
+FP: eval-e008, eval-f021, eval-e050, eval-e033, eval-e004, eval-e021
+FN: eval-f056, eval-f057
+Precision: 25.00%
+Recall   : 50.00%
+F1       : 33.33%
+----------------------------------------------------------------------
+
+QUERY Q30 [recency-old]
+Query: "When did I join PaySwift and what was it like then?"
+Session: eval-session-recency
+
+EXPECTED memories (defined before retrieval):
+  eval-f060 — States joined PaySwift as senior engineer January 2 years ago; 30 engineers at the time.
+  eval-f059 — Launched first PaySwift checkout SDK (credit card only) 6 months ago — historical milestone.
+
+FETCHED (actual system output): eval-f060, eval-f021, eval-f024, eval-f003, eval-f023, eval-f038, eval-f022, eval-e008
+TP: eval-f060
+FP: eval-f021, eval-f024, eval-f003, eval-f023, eval-f038, eval-f022, eval-e008
+FN: eval-f059
+Precision: 12.50%
+Recall   : 50.00%
+F1       : 20.00%
+----------------------------------------------------------------------
+
+QUERY Q31 [recency-old]
+Query: "What major infrastructure migrations have we done in the past year?"
+Session: eval-session-recency
+
+EXPECTED memories (defined before retrieval):
+  eval-e053 — Migrated AWS from us-east-1 to ap-south-1 for India latency 3 months ago.
+  eval-e009 — Completed MongoDB→PostgreSQL migration for transactions service.
+
+FETCHED (actual system output): eval-e008, eval-f058, eval-e050, eval-e051, eval-e035, eval-e009, eval-f021, eval-e053
+TP: eval-e053, eval-e009
+FP: eval-e008, eval-f058, eval-e050, eval-e051, eval-e035, eval-f021
+FN: (none)
+Precision: 25.00%
+Recall   : 100.00%
+F1       : 40.00%
+----------------------------------------------------------------------
+
+QUERY Q32 [same-topic-cluster]
+Query: "What are my diet and nutrition habits?"
+Session: eval-session-topics
+
+EXPECTED memories (defined before retrieval):
+  eval-f007 — User is vegetarian and allergic to peanuts.
+  eval-f061 — Follows 16:8 intermittent fasting: noon–8 PM.
+  eval-f062 — Avoids refined sugar and white flour; uses jaggery and whole wheat.
+  eval-f065 — Doctor recommended 140g+ protein for muscle recovery.
+  eval-f067 — Doesn't drink alcohol; stopped 2 years ago.
+
+FETCHED (actual system output): eval-e008, eval-f007, eval-e033, eval-e004, eval-f058, eval-f021, eval-e052, eval-e037
+TP: eval-f007
+FP: eval-e008, eval-e033, eval-e004, eval-f058, eval-f021, eval-e052, eval-e037
+FN: eval-f061, eval-f062, eval-f065, eval-f067
+Precision: 12.50%
+Recall   : 20.00%
+F1       : 15.38%
+----------------------------------------------------------------------
+
+QUERY Q33 [same-topic-cluster]
+Query: "What is my health and fitness routine?"
+Session: eval-session-topics
+
+EXPECTED memories (defined before retrieval):
+  eval-f014 — Goes to gym 3x/week for strength training.
+  eval-f069 — Sleeps 7-8 hours; schedule 11 PM to 6:30 AM.
+  eval-f068 — Drinks 3+ litres of water daily, especially on running days.
+  eval-f063 — Takes vitamin D3 2000IU and omega-3 1g daily.
+  eval-f070 — Resting heart rate improved from 72 to 58 BPM over 8 months training.
+
+FETCHED (actual system output): eval-e008, eval-e033, eval-f007, eval-e051, eval-f021, eval-f058, eval-e037, eval-f001
+TP: (none)
+FP: eval-e008, eval-e033, eval-f007, eval-e051, eval-f021, eval-f058, eval-e037, eval-f001
+FN: eval-f014, eval-f069, eval-f068, eval-f063, eval-f070
+Precision: 0.00%
+Recall   : 0.00%
+F1       : N/A
+----------------------------------------------------------------------
+
+QUERY Q34 [multi-memory-complex]
+Query: "What is the state of my fraud detection work — what exists, what is broken, and what needs to change?"
+Session: eval-session-projects
+
+EXPECTED memories (defined before retrieval):
+  eval-f026 — User owns fraud detection microservice with rule-based engine.
+  eval-f030 — Fraud detection processes ~50K transactions/day.
+  eval-s002 — Rule-only fraud detection has high false positives; combining with ML improves accuracy.
+  eval-f054 — Goal to migrate fraud detection rules to OPA policy-as-code.
+  eval-e001 — Discussed fraud detection architecture; decided to add velocity attack rule.
+
+FETCHED (actual system output): eval-e001, eval-e051, eval-f030, eval-f026, eval-s002, eval-f058, eval-f054, eval-e010
+TP: eval-f026, eval-f030, eval-s002, eval-f054, eval-e001
+FP: eval-e051, eval-f058, eval-e010
+FN: (none)
+Precision: 62.50%
+Recall   : 100.00%
+F1       : 76.92%
+----------------------------------------------------------------------
+
+QUERY Q35 [multi-memory-complex]
+Query: "What is my career progression and promotion status?"
+Session: eval-session-history
+
+EXPECTED memories (defined before retrieval):
+  eval-f003 — Current role: senior software engineer at PaySwift.
+  eval-e008 — 1:1 with Anjali: on track for staff engineer promotion.
+  eval-e019 — Annual review 4.2/5; qualifies for 15% salary increment.
+  eval-f038 — User is tech lead for a team of 5 engineers.
+
+FETCHED (actual system output): eval-e008, eval-e004, eval-e050, eval-e051, eval-f058, eval-e019, eval-e010, eval-e033
+TP: eval-e008, eval-e019
+FP: eval-e004, eval-e050, eval-e051, eval-f058, eval-e010, eval-e033
+FN: eval-f003, eval-f038
+Precision: 25.00%
+Recall   : 50.00%
+F1       : 33.33%
+----------------------------------------------------------------------
+
+QUERY Q36 [noise-distractor]
+Query: "What do I know about quantum computing?"
+Session: eval-session-noise
+
+EXPECTED memories (defined before retrieval):
+  eval-s006 — Noise memory about quantum computing — only relevant memory for this topic.
+
+FETCHED (actual system output): eval-e008, eval-f058, eval-f021, eval-e033, eval-e052, eval-f007, eval-e037, eval-f024
+TP: (none)
+FP: eval-e008, eval-f058, eval-f021, eval-e033, eval-e052, eval-f007, eval-e037, eval-f024
+FN: eval-s006
+Precision: 0.00%
+Recall   : 0.00%
+F1       : N/A
+----------------------------------------------------------------------
+
+QUERY Q37 [noise-distractor]
+Query: "Tell me about my personal interests and hobbies outside work."
+Session: eval-session-noise
+
+EXPECTED memories (defined before retrieval):
+  eval-f077 — Supports RCB cricket team; attended 3 IPL matches.
+  eval-f076 — Uses Kindle Paperwhite for reading.
+  eval-f084 — Signed up for pottery class in HSR Layout.
+  eval-f086 — Planted balcony herb garden.
+
+FETCHED (actual system output): eval-e008, eval-f007, eval-e033, eval-f021, eval-f001, eval-f058, eval-e037, eval-f003
+TP: (none)
+FP: eval-e008, eval-f007, eval-e033, eval-f021, eval-f001, eval-f058, eval-e037, eval-f003
+FN: eval-f077, eval-f076, eval-f084, eval-f086
+Precision: 0.00%
+Recall   : 0.00%
+F1       : N/A
+----------------------------------------------------------------------
+
+QUERY Q38 [no-relevant-memory]
+Query: "What is the recipe for making sourdough bread?"
+Session: eval-session-noise
+
+EXPECTED memories (defined before retrieval):
+  eval-f072 — Only seeded memory mentioning sourdough bread; loosely relevant.
+
+FETCHED (actual system output): eval-e008, eval-f021, eval-f058, eval-e034, eval-e051, eval-e010, eval-e033, eval-e047
+TP: (none)
+FP: eval-e008, eval-f021, eval-f058, eval-e034, eval-e051, eval-e010, eval-e033, eval-e047
+FN: eval-f072
+Precision: 0.00%
+Recall   : 0.00%
+F1       : N/A
+----------------------------------------------------------------------
+
+QUERY Q39 [cross-session-multi]
+Query: "What are all my upcoming important deadlines and milestones before year-end?"
+Session: eval-session-goals
+
+EXPECTED memories (defined before retrieval):
+  eval-e031 — AWS exam booked for October 15.
+  eval-f042 — AWS cert goal by year-end.
+  eval-e044 — Bengaluru marathon November 17.
+  eval-e043 — Japan trip December 20–January 1.
+  eval-f048 — Goal: launch personal finance app with 500 beta users by year-end.
+
+FETCHED (actual system output): eval-e008, eval-e050, eval-e047, eval-e033, eval-e037, eval-e004, eval-f058, eval-e051
+TP: (none)
+FP: eval-e008, eval-e050, eval-e047, eval-e033, eval-e037, eval-e004, eval-f058, eval-e051
+FN: eval-e031, eval-f042, eval-e044, eval-e043, eval-f048
+Precision: 0.00%
+Recall   : 0.00%
+F1       : N/A
+----------------------------------------------------------------------
+
+QUERY Q40 [multi-memory-complex]
+Query: "What has my team been building and what did we recently ship?"
+Session: eval-session-history
+
+EXPECTED memories (defined before retrieval):
+  eval-e006 — Shipped BNPL feature to production after 3 months development.
+  eval-f021 — Currently building payment gateway checkout SDK.
+  eval-e025 — Upgraded Node.js 20→22 across monorepo last sprint.
+  eval-f037 — Payment gateway supports UPI, credit/debit cards, BNPL.
+
+FETCHED (actual system output): eval-e008, eval-f058, eval-e051, eval-f021, eval-e035, eval-e006, eval-e001, eval-e002
+TP: eval-e006, eval-f021
+FP: eval-e008, eval-f058, eval-e051, eval-e035, eval-e001, eval-e002
+FN: eval-e025, eval-f037
+Precision: 25.00%
+Recall   : 50.00%
+F1       : 33.33%
+----------------------------------------------------------------------
+
+======================================================================
+AGGREGATE RESULTS
+Total TP       : 55
+Total FP       : 265
+Total FN       : 49
+Micro-Precision: 17.19%
+Micro-Recall   : 52.88%
+Micro-F1       : 25.94%
+Macro-Precision: 17.19%
+Macro-Recall   : 60.29%
+Macro-F1       : 31.05%

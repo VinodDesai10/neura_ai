@@ -65,9 +65,35 @@ export async function ensurePostgresReady() {
         )
       `;
 
+      // M-1: Add user_id column for cross-session user-level memory scope.
+      // Uses ADD COLUMN IF NOT EXISTS so it is idempotent on existing databases.
+      await sql`
+        alter table factual_memories
+        add column if not exists user_id text
+      `;
+
+      // M-2: Create a partial unique index on (user_id, fingerprint) so that the
+      // same factual memory (same fingerprint) is stored only once per user
+      // across all sessions, rather than once per session.  The index is
+      // partial (WHERE user_id IS NOT NULL) so session-only rows (no userId)
+      // are unaffected and the original (session_id, fingerprint) unique
+      // constraint continues to guard those rows.
+      await sql`
+        create unique index if not exists factual_memories_user_fingerprint_idx
+        on factual_memories (user_id, fingerprint)
+        where user_id is not null
+      `;
+
       await sql`
         create index if not exists factual_memories_session_idx
         on factual_memories (session_id)
+      `;
+
+      // M-3: Index on user_id for the cross-session lookup in findRelevant().
+      await sql`
+        create index if not exists factual_memories_user_idx
+        on factual_memories (user_id)
+        where user_id is not null
       `;
 
       // Full-text search: generated tsvector column + GIN index.

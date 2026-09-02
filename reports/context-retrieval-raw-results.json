@@ -1,0 +1,1549 @@
+{
+  "aggregate": {
+    "totalQueries": 40,
+    "totalExpected": 104,
+    "totalFetched": 320,
+    "totalTP": 55,
+    "totalFP": 265,
+    "totalFN": 49,
+    "overallPrecision": 0.171875,
+    "overallRecall": 0.5288461538461539,
+    "overallF1": 0.25943396226415094,
+    "macroPrecision": 0.171875,
+    "macroRecall": 0.6029166666666667,
+    "macroF1": 0.3104636104636105,
+    "runTimestamp": "2026-09-02T06:11:45.284Z"
+  },
+  "evaluated": [
+    {
+      "queryId": "Q01",
+      "query": "What is my name and where do I live?",
+      "sessionId": "eval-session-personal",
+      "category": "exact-factual-recall",
+      "expectedIds": [
+        "eval-f001",
+        "eval-f002"
+      ],
+      "fetchedIds": [
+        "eval-e008",
+        "eval-f001",
+        "eval-f002",
+        "eval-f007",
+        "eval-f021",
+        "eval-e033",
+        "eval-e051",
+        "eval-f003"
+      ],
+      "tp": [
+        "eval-f001",
+        "eval-f002"
+      ],
+      "fp": [
+        "eval-e008",
+        "eval-f007",
+        "eval-f021",
+        "eval-e033",
+        "eval-e051",
+        "eval-f003"
+      ],
+      "fn": [],
+      "precision": 0.25,
+      "recall": 1,
+      "f1": 0.4
+    },
+    {
+      "queryId": "Q02",
+      "query": "Tell me about my educational background and work history.",
+      "sessionId": "eval-session-personal",
+      "category": "exact-factual-recall",
+      "expectedIds": [
+        "eval-f018",
+        "eval-f003",
+        "eval-f060"
+      ],
+      "fetchedIds": [
+        "eval-e008",
+        "eval-f021",
+        "eval-f003",
+        "eval-f007",
+        "eval-e033",
+        "eval-f001",
+        "eval-e047",
+        "eval-e035"
+      ],
+      "tp": [
+        "eval-f003"
+      ],
+      "fp": [
+        "eval-e008",
+        "eval-f021",
+        "eval-f007",
+        "eval-e033",
+        "eval-f001",
+        "eval-e047",
+        "eval-e035"
+      ],
+      "fn": [
+        "eval-f018",
+        "eval-f060"
+      ],
+      "precision": 0.125,
+      "recall": 0.3333333333333333,
+      "f1": 0.18181818181818182
+    },
+    {
+      "queryId": "Q03",
+      "query": "What programming languages do I use and for how long?",
+      "sessionId": "eval-session-personal",
+      "category": "exact-factual-recall",
+      "expectedIds": [
+        "eval-f004"
+      ],
+      "fetchedIds": [
+        "eval-e008",
+        "eval-f004",
+        "eval-f058",
+        "eval-f021",
+        "eval-e033",
+        "eval-f007",
+        "eval-f003",
+        "eval-f001"
+      ],
+      "tp": [
+        "eval-f004"
+      ],
+      "fp": [
+        "eval-e008",
+        "eval-f058",
+        "eval-f021",
+        "eval-e033",
+        "eval-f007",
+        "eval-f003",
+        "eval-f001"
+      ],
+      "fn": [],
+      "precision": 0.125,
+      "recall": 1,
+      "f1": 0.2222222222222222
+    },
+    {
+      "queryId": "Q04",
+      "query": "What are my dietary restrictions and food preferences?",
+      "sessionId": "eval-session-personal",
+      "category": "exact-factual-recall",
+      "expectedIds": [
+        "eval-f007",
+        "eval-f006"
+      ],
+      "fetchedIds": [
+        "eval-f007",
+        "eval-e008",
+        "eval-f058",
+        "eval-e033",
+        "eval-e010",
+        "eval-e047",
+        "eval-e037",
+        "eval-e052"
+      ],
+      "tp": [
+        "eval-f007"
+      ],
+      "fp": [
+        "eval-e008",
+        "eval-f058",
+        "eval-e033",
+        "eval-e010",
+        "eval-e047",
+        "eval-e037",
+        "eval-e052"
+      ],
+      "fn": [
+        "eval-f006"
+      ],
+      "precision": 0.125,
+      "recall": 0.5,
+      "f1": 0.2
+    },
+    {
+      "queryId": "Q05",
+      "query": "What project am I currently working on at PaySwift?",
+      "sessionId": "eval-session-projects",
+      "category": "project-technical-context",
+      "expectedIds": [
+        "eval-f021",
+        "eval-f022",
+        "eval-f026"
+      ],
+      "fetchedIds": [
+        "eval-f021",
+        "eval-f024",
+        "eval-f023",
+        "eval-f022",
+        "eval-f038",
+        "eval-f025",
+        "eval-f040",
+        "eval-f037"
+      ],
+      "tp": [
+        "eval-f021",
+        "eval-f022"
+      ],
+      "fp": [
+        "eval-f024",
+        "eval-f023",
+        "eval-f038",
+        "eval-f025",
+        "eval-f040",
+        "eval-f037"
+      ],
+      "fn": [
+        "eval-f026"
+      ],
+      "precision": 0.25,
+      "recall": 0.6666666666666666,
+      "f1": 0.36363636363636365
+    },
+    {
+      "queryId": "Q06",
+      "query": "What is the tech stack and infrastructure for the PaySwift backend?",
+      "sessionId": "eval-session-projects",
+      "category": "project-technical-context",
+      "expectedIds": [
+        "eval-f023",
+        "eval-f025",
+        "eval-f024",
+        "eval-f039"
+      ],
+      "fetchedIds": [
+        "eval-f023",
+        "eval-f021",
+        "eval-f025",
+        "eval-f024",
+        "eval-f022",
+        "eval-f040",
+        "eval-f037",
+        "eval-f038"
+      ],
+      "tp": [
+        "eval-f023",
+        "eval-f025",
+        "eval-f024"
+      ],
+      "fp": [
+        "eval-f021",
+        "eval-f022",
+        "eval-f040",
+        "eval-f037",
+        "eval-f038"
+      ],
+      "fn": [
+        "eval-f039"
+      ],
+      "precision": 0.375,
+      "recall": 0.75,
+      "f1": 0.5
+    },
+    {
+      "queryId": "Q07",
+      "query": "What is the fraud detection service and how does it work?",
+      "sessionId": "eval-session-projects",
+      "category": "project-technical-context",
+      "expectedIds": [
+        "eval-f026",
+        "eval-f030",
+        "eval-s002",
+        "eval-f054"
+      ],
+      "fetchedIds": [
+        "eval-f030",
+        "eval-f026",
+        "eval-e051",
+        "eval-e001",
+        "eval-s002",
+        "eval-f054",
+        "eval-f021",
+        "eval-e034"
+      ],
+      "tp": [
+        "eval-f026",
+        "eval-f030",
+        "eval-s002",
+        "eval-f054"
+      ],
+      "fp": [
+        "eval-e051",
+        "eval-e001",
+        "eval-f021",
+        "eval-e034"
+      ],
+      "fn": [],
+      "precision": 0.5,
+      "recall": 1,
+      "f1": 0.6666666666666666
+    },
+    {
+      "queryId": "Q08",
+      "query": "What payment methods does PaySwift support?",
+      "sessionId": "eval-session-projects",
+      "category": "project-technical-context",
+      "expectedIds": [
+        "eval-f037"
+      ],
+      "fetchedIds": [
+        "eval-f037",
+        "eval-f021",
+        "eval-f024",
+        "eval-f023",
+        "eval-f022",
+        "eval-f040",
+        "eval-f025",
+        "eval-e039"
+      ],
+      "tp": [
+        "eval-f037"
+      ],
+      "fp": [
+        "eval-f021",
+        "eval-f024",
+        "eval-f023",
+        "eval-f022",
+        "eval-f040",
+        "eval-f025",
+        "eval-e039"
+      ],
+      "fn": [],
+      "precision": 0.125,
+      "recall": 1,
+      "f1": 0.2222222222222222
+    },
+    {
+      "queryId": "Q09",
+      "query": "What tools and frameworks do I use for testing?",
+      "sessionId": "eval-session-projects",
+      "category": "project-technical-context",
+      "expectedIds": [
+        "eval-f036",
+        "eval-f028"
+      ],
+      "fetchedIds": [
+        "eval-f058",
+        "eval-e008",
+        "eval-e051",
+        "eval-f021",
+        "eval-e050",
+        "eval-e010",
+        "eval-e033",
+        "eval-f026"
+      ],
+      "tp": [],
+      "fp": [
+        "eval-f058",
+        "eval-e008",
+        "eval-e051",
+        "eval-f021",
+        "eval-e050",
+        "eval-e010",
+        "eval-e033",
+        "eval-f026"
+      ],
+      "fn": [
+        "eval-f036",
+        "eval-f028"
+      ],
+      "precision": 0,
+      "recall": 0,
+      "f1": null
+    },
+    {
+      "queryId": "Q10",
+      "query": "What monitoring and observability tools does PaySwift use?",
+      "sessionId": "eval-session-projects",
+      "category": "project-technical-context",
+      "expectedIds": [
+        "eval-f029",
+        "eval-f040"
+      ],
+      "fetchedIds": [
+        "eval-f040",
+        "eval-f023",
+        "eval-f021",
+        "eval-f024",
+        "eval-f025",
+        "eval-f022",
+        "eval-f029",
+        "eval-f037"
+      ],
+      "tp": [
+        "eval-f029",
+        "eval-f040"
+      ],
+      "fp": [
+        "eval-f023",
+        "eval-f021",
+        "eval-f024",
+        "eval-f025",
+        "eval-f022",
+        "eval-f037"
+      ],
+      "fn": [],
+      "precision": 0.25,
+      "recall": 1,
+      "f1": 0.4
+    },
+    {
+      "queryId": "Q11",
+      "query": "What consistency challenges do payment systems face?",
+      "sessionId": "eval-session-projects",
+      "category": "semantic-paraphrased-recall",
+      "expectedIds": [
+        "eval-s001"
+      ],
+      "fetchedIds": [
+        "eval-s001",
+        "eval-f021",
+        "eval-f039",
+        "eval-e045",
+        "eval-e051",
+        "eval-e010",
+        "eval-f023",
+        "eval-e022"
+      ],
+      "tp": [
+        "eval-s001"
+      ],
+      "fp": [
+        "eval-f021",
+        "eval-f039",
+        "eval-e045",
+        "eval-e051",
+        "eval-e010",
+        "eval-f023",
+        "eval-e022"
+      ],
+      "fn": [],
+      "precision": 0.125,
+      "recall": 1,
+      "f1": 0.2222222222222222
+    },
+    {
+      "queryId": "Q12",
+      "query": "How can I improve the reliability of my TypeScript API boundaries?",
+      "sessionId": "eval-session-projects",
+      "category": "semantic-paraphrased-recall",
+      "expectedIds": [
+        "eval-s003",
+        "eval-f004"
+      ],
+      "fetchedIds": [
+        "eval-s003",
+        "eval-e010",
+        "eval-f058",
+        "eval-f022",
+        "eval-e051",
+        "eval-e004",
+        "eval-f024",
+        "eval-f021"
+      ],
+      "tp": [
+        "eval-s003"
+      ],
+      "fp": [
+        "eval-e010",
+        "eval-f058",
+        "eval-f022",
+        "eval-e051",
+        "eval-e004",
+        "eval-f024",
+        "eval-f021"
+      ],
+      "fn": [
+        "eval-f004"
+      ],
+      "precision": 0.125,
+      "recall": 0.5,
+      "f1": 0.2
+    },
+    {
+      "queryId": "Q13",
+      "query": "What do I need to know about database connection management under load?",
+      "sessionId": "eval-session-projects",
+      "category": "semantic-paraphrased-recall",
+      "expectedIds": [
+        "eval-s004",
+        "eval-f023"
+      ],
+      "fetchedIds": [
+        "eval-s004",
+        "eval-e051",
+        "eval-e022",
+        "eval-f058",
+        "eval-e010",
+        "eval-e004",
+        "eval-e034",
+        "eval-f023"
+      ],
+      "tp": [
+        "eval-s004",
+        "eval-f023"
+      ],
+      "fp": [
+        "eval-e051",
+        "eval-e022",
+        "eval-f058",
+        "eval-e010",
+        "eval-e004",
+        "eval-e034"
+      ],
+      "fn": [],
+      "precision": 0.25,
+      "recall": 1,
+      "f1": 0.4
+    },
+    {
+      "queryId": "Q14",
+      "query": "What happened during the security incident with our OAuth implementation?",
+      "sessionId": "eval-session-history",
+      "category": "semantic-paraphrased-recall",
+      "expectedIds": [
+        "eval-e012"
+      ],
+      "fetchedIds": [
+        "eval-e012",
+        "eval-f058",
+        "eval-e051",
+        "eval-e010",
+        "eval-f024",
+        "eval-e014",
+        "eval-e002",
+        "eval-e001"
+      ],
+      "tp": [
+        "eval-e012"
+      ],
+      "fp": [
+        "eval-f058",
+        "eval-e051",
+        "eval-e010",
+        "eval-f024",
+        "eval-e014",
+        "eval-e002",
+        "eval-e001"
+      ],
+      "fn": [],
+      "precision": 0.125,
+      "recall": 1,
+      "f1": 0.2222222222222222
+    },
+    {
+      "queryId": "Q15",
+      "query": "What production incidents have we had recently?",
+      "sessionId": "eval-session-history",
+      "category": "episodic-recall",
+      "expectedIds": [
+        "eval-e002",
+        "eval-e014",
+        "eval-e016"
+      ],
+      "fetchedIds": [
+        "eval-f058",
+        "eval-e050",
+        "eval-e051",
+        "eval-e004",
+        "eval-e002",
+        "eval-e034",
+        "eval-e014",
+        "eval-e010"
+      ],
+      "tp": [
+        "eval-e002",
+        "eval-e014"
+      ],
+      "fp": [
+        "eval-f058",
+        "eval-e050",
+        "eval-e051",
+        "eval-e004",
+        "eval-e034",
+        "eval-e010"
+      ],
+      "fn": [
+        "eval-e016"
+      ],
+      "precision": 0.25,
+      "recall": 0.6666666666666666,
+      "f1": 0.36363636363636365
+    },
+    {
+      "queryId": "Q16",
+      "query": "What did we discuss in the last sprint retrospective?",
+      "sessionId": "eval-session-history",
+      "category": "episodic-recall",
+      "expectedIds": [
+        "eval-e004"
+      ],
+      "fetchedIds": [
+        "eval-e004",
+        "eval-e008",
+        "eval-e050",
+        "eval-e051",
+        "eval-e021",
+        "eval-e010",
+        "eval-e001",
+        "eval-e033"
+      ],
+      "tp": [
+        "eval-e004"
+      ],
+      "fp": [
+        "eval-e008",
+        "eval-e050",
+        "eval-e051",
+        "eval-e021",
+        "eval-e010",
+        "eval-e001",
+        "eval-e033"
+      ],
+      "fn": [],
+      "precision": 0.125,
+      "recall": 1,
+      "f1": 0.2222222222222222
+    },
+    {
+      "queryId": "Q17",
+      "query": "What is the status of new team members I recently onboarded?",
+      "sessionId": "eval-session-history",
+      "category": "episodic-recall",
+      "expectedIds": [
+        "eval-e005",
+        "eval-e035"
+      ],
+      "fetchedIds": [
+        "eval-e008",
+        "eval-e047",
+        "eval-e005",
+        "eval-e050",
+        "eval-e004",
+        "eval-e034",
+        "eval-e051",
+        "eval-e035"
+      ],
+      "tp": [
+        "eval-e005",
+        "eval-e035"
+      ],
+      "fp": [
+        "eval-e008",
+        "eval-e047",
+        "eval-e050",
+        "eval-e004",
+        "eval-e034",
+        "eval-e051"
+      ],
+      "fn": [],
+      "precision": 0.25,
+      "recall": 1,
+      "f1": 0.4
+    },
+    {
+      "queryId": "Q18",
+      "query": "Tell me about the BNPL feature we shipped.",
+      "sessionId": "eval-session-history",
+      "category": "episodic-recall",
+      "expectedIds": [
+        "eval-e006",
+        "eval-f037"
+      ],
+      "fetchedIds": [
+        "eval-e006",
+        "eval-e051",
+        "eval-e010",
+        "eval-f021",
+        "eval-f058",
+        "eval-e002",
+        "eval-f037",
+        "eval-f022"
+      ],
+      "tp": [
+        "eval-e006",
+        "eval-f037"
+      ],
+      "fp": [
+        "eval-e051",
+        "eval-e010",
+        "eval-f021",
+        "eval-f058",
+        "eval-e002",
+        "eval-f022"
+      ],
+      "fn": [],
+      "precision": 0.25,
+      "recall": 1,
+      "f1": 0.4
+    },
+    {
+      "queryId": "Q19",
+      "query": "What is the update from my 1:1 with my manager?",
+      "sessionId": "eval-session-history",
+      "category": "episodic-recall",
+      "expectedIds": [
+        "eval-e008",
+        "eval-e019"
+      ],
+      "fetchedIds": [
+        "eval-e008",
+        "eval-e047",
+        "eval-e004",
+        "eval-e021",
+        "eval-e010",
+        "eval-e051",
+        "eval-e033",
+        "eval-e017"
+      ],
+      "tp": [
+        "eval-e008"
+      ],
+      "fp": [
+        "eval-e047",
+        "eval-e004",
+        "eval-e021",
+        "eval-e010",
+        "eval-e051",
+        "eval-e033",
+        "eval-e017"
+      ],
+      "fn": [
+        "eval-e019"
+      ],
+      "precision": 0.125,
+      "recall": 0.5,
+      "f1": 0.2
+    },
+    {
+      "queryId": "Q20",
+      "query": "What architectural decisions have we made recently?",
+      "sessionId": "eval-session-history",
+      "category": "episodic-recall",
+      "expectedIds": [
+        "eval-e028",
+        "eval-e030",
+        "eval-e009"
+      ],
+      "fetchedIds": [
+        "eval-e001",
+        "eval-f058",
+        "eval-e051",
+        "eval-e004",
+        "eval-f021",
+        "eval-e028",
+        "eval-f052",
+        "eval-f044"
+      ],
+      "tp": [
+        "eval-e028"
+      ],
+      "fp": [
+        "eval-e001",
+        "eval-f058",
+        "eval-e051",
+        "eval-e004",
+        "eval-f021",
+        "eval-f052",
+        "eval-f044"
+      ],
+      "fn": [
+        "eval-e030",
+        "eval-e009"
+      ],
+      "precision": 0.125,
+      "recall": 0.3333333333333333,
+      "f1": 0.18181818181818182
+    },
+    {
+      "queryId": "Q21",
+      "query": "What are my current engineering goals for this quarter?",
+      "sessionId": "eval-session-goals",
+      "category": "goals-tasks",
+      "expectedIds": [
+        "eval-f041",
+        "eval-f043",
+        "eval-f044"
+      ],
+      "fetchedIds": [
+        "eval-e008",
+        "eval-e050",
+        "eval-e051",
+        "eval-e003",
+        "eval-f021",
+        "eval-e033",
+        "eval-e004",
+        "eval-e045"
+      ],
+      "tp": [],
+      "fp": [
+        "eval-e008",
+        "eval-e050",
+        "eval-e051",
+        "eval-e003",
+        "eval-f021",
+        "eval-e033",
+        "eval-e004",
+        "eval-e045"
+      ],
+      "fn": [
+        "eval-f041",
+        "eval-f043",
+        "eval-f044"
+      ],
+      "precision": 0,
+      "recall": 0,
+      "f1": null
+    },
+    {
+      "queryId": "Q22",
+      "query": "What certifications and courses am I working toward?",
+      "sessionId": "eval-session-goals",
+      "category": "goals-tasks",
+      "expectedIds": [
+        "eval-f042",
+        "eval-e031",
+        "eval-f045"
+      ],
+      "fetchedIds": [
+        "eval-e008",
+        "eval-e050",
+        "eval-f021",
+        "eval-e033",
+        "eval-f058",
+        "eval-e047",
+        "eval-f042",
+        "eval-f052"
+      ],
+      "tp": [
+        "eval-f042"
+      ],
+      "fp": [
+        "eval-e008",
+        "eval-e050",
+        "eval-f021",
+        "eval-e033",
+        "eval-f058",
+        "eval-e047",
+        "eval-f052"
+      ],
+      "fn": [
+        "eval-e031",
+        "eval-f045"
+      ],
+      "precision": 0.125,
+      "recall": 0.3333333333333333,
+      "f1": 0.18181818181818182
+    },
+    {
+      "queryId": "Q23",
+      "query": "What engineering improvements am I planning to make to our infrastructure?",
+      "sessionId": "eval-session-goals",
+      "category": "goals-tasks",
+      "expectedIds": [
+        "eval-f052",
+        "eval-f050",
+        "eval-f046"
+      ],
+      "fetchedIds": [
+        "eval-e008",
+        "eval-f058",
+        "eval-f021",
+        "eval-e051",
+        "eval-e010",
+        "eval-e034",
+        "eval-f052",
+        "eval-f044"
+      ],
+      "tp": [
+        "eval-f052"
+      ],
+      "fp": [
+        "eval-e008",
+        "eval-f058",
+        "eval-f021",
+        "eval-e051",
+        "eval-e010",
+        "eval-e034",
+        "eval-f044"
+      ],
+      "fn": [
+        "eval-f050",
+        "eval-f046"
+      ],
+      "precision": 0.125,
+      "recall": 0.3333333333333333,
+      "f1": 0.18181818181818182
+    },
+    {
+      "queryId": "Q24",
+      "query": "What personal fitness goals am I working on?",
+      "sessionId": "eval-session-goals",
+      "category": "goals-tasks",
+      "expectedIds": [
+        "eval-f047",
+        "eval-e033",
+        "eval-e044"
+      ],
+      "fetchedIds": [
+        "eval-e008",
+        "eval-e033",
+        "eval-f021",
+        "eval-e050",
+        "eval-e037",
+        "eval-f007",
+        "eval-f041",
+        "eval-e047"
+      ],
+      "tp": [
+        "eval-e033"
+      ],
+      "fp": [
+        "eval-e008",
+        "eval-f021",
+        "eval-e050",
+        "eval-e037",
+        "eval-f007",
+        "eval-f041",
+        "eval-e047"
+      ],
+      "fn": [
+        "eval-f047",
+        "eval-e044"
+      ],
+      "precision": 0.125,
+      "recall": 0.3333333333333333,
+      "f1": 0.18181818181818182
+    },
+    {
+      "queryId": "Q25",
+      "query": "What important events or deadlines do I have coming up in November?",
+      "sessionId": "eval-session-events",
+      "category": "dates-events",
+      "expectedIds": [
+        "eval-e037",
+        "eval-e044",
+        "eval-e041"
+      ],
+      "fetchedIds": [
+        "eval-e008",
+        "eval-e037",
+        "eval-e050",
+        "eval-e041",
+        "eval-e047",
+        "eval-e046",
+        "eval-e033",
+        "eval-f058"
+      ],
+      "tp": [
+        "eval-e037",
+        "eval-e041"
+      ],
+      "fp": [
+        "eval-e008",
+        "eval-e050",
+        "eval-e047",
+        "eval-e046",
+        "eval-e033",
+        "eval-f058"
+      ],
+      "fn": [
+        "eval-e044"
+      ],
+      "precision": 0.25,
+      "recall": 0.6666666666666666,
+      "f1": 0.36363636363636365
+    },
+    {
+      "queryId": "Q26",
+      "query": "What is the status of hiring Megha and when does she join?",
+      "sessionId": "eval-session-events",
+      "category": "dates-events",
+      "expectedIds": [
+        "eval-e035",
+        "eval-e047"
+      ],
+      "fetchedIds": [
+        "eval-e035",
+        "eval-e047",
+        "eval-e008",
+        "eval-e051",
+        "eval-e005",
+        "eval-f058",
+        "eval-e010",
+        "eval-f021"
+      ],
+      "tp": [
+        "eval-e035",
+        "eval-e047"
+      ],
+      "fp": [
+        "eval-e008",
+        "eval-e051",
+        "eval-e005",
+        "eval-f058",
+        "eval-e010",
+        "eval-f021"
+      ],
+      "fn": [],
+      "precision": 0.25,
+      "recall": 1,
+      "f1": 0.4
+    },
+    {
+      "queryId": "Q27",
+      "query": "When is the company offsite and what am I presenting?",
+      "sessionId": "eval-session-events",
+      "category": "dates-events",
+      "expectedIds": [
+        "eval-e049"
+      ],
+      "fetchedIds": [
+        "eval-e008",
+        "eval-e049",
+        "eval-e017",
+        "eval-e047",
+        "eval-e037",
+        "eval-e050",
+        "eval-e051",
+        "eval-e004"
+      ],
+      "tp": [
+        "eval-e049"
+      ],
+      "fp": [
+        "eval-e008",
+        "eval-e017",
+        "eval-e047",
+        "eval-e037",
+        "eval-e050",
+        "eval-e051",
+        "eval-e004"
+      ],
+      "fn": [],
+      "precision": 0.125,
+      "recall": 1,
+      "f1": 0.2222222222222222
+    },
+    {
+      "queryId": "Q28",
+      "query": "What trip have I planned for the end of the year?",
+      "sessionId": "eval-session-events",
+      "category": "dates-events",
+      "expectedIds": [
+        "eval-e043"
+      ],
+      "fetchedIds": [
+        "eval-e008",
+        "eval-e037",
+        "eval-e043",
+        "eval-e050",
+        "eval-f058",
+        "eval-f021",
+        "eval-e047",
+        "eval-e033"
+      ],
+      "tp": [
+        "eval-e043"
+      ],
+      "fp": [
+        "eval-e008",
+        "eval-e037",
+        "eval-e050",
+        "eval-f058",
+        "eval-f021",
+        "eval-e047",
+        "eval-e033"
+      ],
+      "fn": [],
+      "precision": 0.125,
+      "recall": 1,
+      "f1": 0.2222222222222222
+    },
+    {
+      "queryId": "Q29",
+      "query": "What have I been working on today or in the last few hours?",
+      "sessionId": "eval-session-recency",
+      "category": "recency-recent",
+      "expectedIds": [
+        "eval-f056",
+        "eval-f057",
+        "eval-e051",
+        "eval-f058"
+      ],
+      "fetchedIds": [
+        "eval-e008",
+        "eval-f058",
+        "eval-f021",
+        "eval-e050",
+        "eval-e051",
+        "eval-e033",
+        "eval-e004",
+        "eval-e021"
+      ],
+      "tp": [
+        "eval-e051",
+        "eval-f058"
+      ],
+      "fp": [
+        "eval-e008",
+        "eval-f021",
+        "eval-e050",
+        "eval-e033",
+        "eval-e004",
+        "eval-e021"
+      ],
+      "fn": [
+        "eval-f056",
+        "eval-f057"
+      ],
+      "precision": 0.25,
+      "recall": 0.5,
+      "f1": 0.3333333333333333
+    },
+    {
+      "queryId": "Q30",
+      "query": "When did I join PaySwift and what was it like then?",
+      "sessionId": "eval-session-recency",
+      "category": "recency-old",
+      "expectedIds": [
+        "eval-f060",
+        "eval-f059"
+      ],
+      "fetchedIds": [
+        "eval-f060",
+        "eval-f021",
+        "eval-f024",
+        "eval-f003",
+        "eval-f023",
+        "eval-f038",
+        "eval-f022",
+        "eval-e008"
+      ],
+      "tp": [
+        "eval-f060"
+      ],
+      "fp": [
+        "eval-f021",
+        "eval-f024",
+        "eval-f003",
+        "eval-f023",
+        "eval-f038",
+        "eval-f022",
+        "eval-e008"
+      ],
+      "fn": [
+        "eval-f059"
+      ],
+      "precision": 0.125,
+      "recall": 0.5,
+      "f1": 0.2
+    },
+    {
+      "queryId": "Q31",
+      "query": "What major infrastructure migrations have we done in the past year?",
+      "sessionId": "eval-session-recency",
+      "category": "recency-old",
+      "expectedIds": [
+        "eval-e053",
+        "eval-e009"
+      ],
+      "fetchedIds": [
+        "eval-e008",
+        "eval-f058",
+        "eval-e050",
+        "eval-e051",
+        "eval-e035",
+        "eval-e009",
+        "eval-f021",
+        "eval-e053"
+      ],
+      "tp": [
+        "eval-e053",
+        "eval-e009"
+      ],
+      "fp": [
+        "eval-e008",
+        "eval-f058",
+        "eval-e050",
+        "eval-e051",
+        "eval-e035",
+        "eval-f021"
+      ],
+      "fn": [],
+      "precision": 0.25,
+      "recall": 1,
+      "f1": 0.4
+    },
+    {
+      "queryId": "Q32",
+      "query": "What are my diet and nutrition habits?",
+      "sessionId": "eval-session-topics",
+      "category": "same-topic-cluster",
+      "expectedIds": [
+        "eval-f007",
+        "eval-f061",
+        "eval-f062",
+        "eval-f065",
+        "eval-f067"
+      ],
+      "fetchedIds": [
+        "eval-e008",
+        "eval-f007",
+        "eval-e033",
+        "eval-e004",
+        "eval-f058",
+        "eval-f021",
+        "eval-e052",
+        "eval-e037"
+      ],
+      "tp": [
+        "eval-f007"
+      ],
+      "fp": [
+        "eval-e008",
+        "eval-e033",
+        "eval-e004",
+        "eval-f058",
+        "eval-f021",
+        "eval-e052",
+        "eval-e037"
+      ],
+      "fn": [
+        "eval-f061",
+        "eval-f062",
+        "eval-f065",
+        "eval-f067"
+      ],
+      "precision": 0.125,
+      "recall": 0.2,
+      "f1": 0.15384615384615385
+    },
+    {
+      "queryId": "Q33",
+      "query": "What is my health and fitness routine?",
+      "sessionId": "eval-session-topics",
+      "category": "same-topic-cluster",
+      "expectedIds": [
+        "eval-f014",
+        "eval-f069",
+        "eval-f068",
+        "eval-f063",
+        "eval-f070"
+      ],
+      "fetchedIds": [
+        "eval-e008",
+        "eval-e033",
+        "eval-f007",
+        "eval-e051",
+        "eval-f021",
+        "eval-f058",
+        "eval-e037",
+        "eval-f001"
+      ],
+      "tp": [],
+      "fp": [
+        "eval-e008",
+        "eval-e033",
+        "eval-f007",
+        "eval-e051",
+        "eval-f021",
+        "eval-f058",
+        "eval-e037",
+        "eval-f001"
+      ],
+      "fn": [
+        "eval-f014",
+        "eval-f069",
+        "eval-f068",
+        "eval-f063",
+        "eval-f070"
+      ],
+      "precision": 0,
+      "recall": 0,
+      "f1": null
+    },
+    {
+      "queryId": "Q34",
+      "query": "What is the state of my fraud detection work — what exists, what is broken, and what needs to change?",
+      "sessionId": "eval-session-projects",
+      "category": "multi-memory-complex",
+      "expectedIds": [
+        "eval-f026",
+        "eval-f030",
+        "eval-s002",
+        "eval-f054",
+        "eval-e001"
+      ],
+      "fetchedIds": [
+        "eval-e001",
+        "eval-e051",
+        "eval-f030",
+        "eval-f026",
+        "eval-s002",
+        "eval-f058",
+        "eval-f054",
+        "eval-e010"
+      ],
+      "tp": [
+        "eval-f026",
+        "eval-f030",
+        "eval-s002",
+        "eval-f054",
+        "eval-e001"
+      ],
+      "fp": [
+        "eval-e051",
+        "eval-f058",
+        "eval-e010"
+      ],
+      "fn": [],
+      "precision": 0.625,
+      "recall": 1,
+      "f1": 0.7692307692307693
+    },
+    {
+      "queryId": "Q35",
+      "query": "What is my career progression and promotion status?",
+      "sessionId": "eval-session-history",
+      "category": "multi-memory-complex",
+      "expectedIds": [
+        "eval-f003",
+        "eval-e008",
+        "eval-e019",
+        "eval-f038"
+      ],
+      "fetchedIds": [
+        "eval-e008",
+        "eval-e004",
+        "eval-e050",
+        "eval-e051",
+        "eval-f058",
+        "eval-e019",
+        "eval-e010",
+        "eval-e033"
+      ],
+      "tp": [
+        "eval-e008",
+        "eval-e019"
+      ],
+      "fp": [
+        "eval-e004",
+        "eval-e050",
+        "eval-e051",
+        "eval-f058",
+        "eval-e010",
+        "eval-e033"
+      ],
+      "fn": [
+        "eval-f003",
+        "eval-f038"
+      ],
+      "precision": 0.25,
+      "recall": 0.5,
+      "f1": 0.3333333333333333
+    },
+    {
+      "queryId": "Q36",
+      "query": "What do I know about quantum computing?",
+      "sessionId": "eval-session-noise",
+      "category": "noise-distractor",
+      "expectedIds": [
+        "eval-s006"
+      ],
+      "fetchedIds": [
+        "eval-e008",
+        "eval-f058",
+        "eval-f021",
+        "eval-e033",
+        "eval-e052",
+        "eval-f007",
+        "eval-e037",
+        "eval-f024"
+      ],
+      "tp": [],
+      "fp": [
+        "eval-e008",
+        "eval-f058",
+        "eval-f021",
+        "eval-e033",
+        "eval-e052",
+        "eval-f007",
+        "eval-e037",
+        "eval-f024"
+      ],
+      "fn": [
+        "eval-s006"
+      ],
+      "precision": 0,
+      "recall": 0,
+      "f1": null
+    },
+    {
+      "queryId": "Q37",
+      "query": "Tell me about my personal interests and hobbies outside work.",
+      "sessionId": "eval-session-noise",
+      "category": "noise-distractor",
+      "expectedIds": [
+        "eval-f077",
+        "eval-f076",
+        "eval-f084",
+        "eval-f086"
+      ],
+      "fetchedIds": [
+        "eval-e008",
+        "eval-f007",
+        "eval-e033",
+        "eval-f021",
+        "eval-f001",
+        "eval-f058",
+        "eval-e037",
+        "eval-f003"
+      ],
+      "tp": [],
+      "fp": [
+        "eval-e008",
+        "eval-f007",
+        "eval-e033",
+        "eval-f021",
+        "eval-f001",
+        "eval-f058",
+        "eval-e037",
+        "eval-f003"
+      ],
+      "fn": [
+        "eval-f077",
+        "eval-f076",
+        "eval-f084",
+        "eval-f086"
+      ],
+      "precision": 0,
+      "recall": 0,
+      "f1": null
+    },
+    {
+      "queryId": "Q38",
+      "query": "What is the recipe for making sourdough bread?",
+      "sessionId": "eval-session-noise",
+      "category": "no-relevant-memory",
+      "expectedIds": [
+        "eval-f072"
+      ],
+      "fetchedIds": [
+        "eval-e008",
+        "eval-f021",
+        "eval-f058",
+        "eval-e034",
+        "eval-e051",
+        "eval-e010",
+        "eval-e033",
+        "eval-e047"
+      ],
+      "tp": [],
+      "fp": [
+        "eval-e008",
+        "eval-f021",
+        "eval-f058",
+        "eval-e034",
+        "eval-e051",
+        "eval-e010",
+        "eval-e033",
+        "eval-e047"
+      ],
+      "fn": [
+        "eval-f072"
+      ],
+      "precision": 0,
+      "recall": 0,
+      "f1": null
+    },
+    {
+      "queryId": "Q39",
+      "query": "What are all my upcoming important deadlines and milestones before year-end?",
+      "sessionId": "eval-session-goals",
+      "category": "cross-session-multi",
+      "expectedIds": [
+        "eval-e031",
+        "eval-f042",
+        "eval-e044",
+        "eval-e043",
+        "eval-f048"
+      ],
+      "fetchedIds": [
+        "eval-e008",
+        "eval-e050",
+        "eval-e047",
+        "eval-e033",
+        "eval-e037",
+        "eval-e004",
+        "eval-f058",
+        "eval-e051"
+      ],
+      "tp": [],
+      "fp": [
+        "eval-e008",
+        "eval-e050",
+        "eval-e047",
+        "eval-e033",
+        "eval-e037",
+        "eval-e004",
+        "eval-f058",
+        "eval-e051"
+      ],
+      "fn": [
+        "eval-e031",
+        "eval-f042",
+        "eval-e044",
+        "eval-e043",
+        "eval-f048"
+      ],
+      "precision": 0,
+      "recall": 0,
+      "f1": null
+    },
+    {
+      "queryId": "Q40",
+      "query": "What has my team been building and what did we recently ship?",
+      "sessionId": "eval-session-history",
+      "category": "multi-memory-complex",
+      "expectedIds": [
+        "eval-e006",
+        "eval-f021",
+        "eval-e025",
+        "eval-f037"
+      ],
+      "fetchedIds": [
+        "eval-e008",
+        "eval-f058",
+        "eval-e051",
+        "eval-f021",
+        "eval-e035",
+        "eval-e006",
+        "eval-e001",
+        "eval-e002"
+      ],
+      "tp": [
+        "eval-e006",
+        "eval-f021"
+      ],
+      "fp": [
+        "eval-e008",
+        "eval-f058",
+        "eval-e051",
+        "eval-e035",
+        "eval-e001",
+        "eval-e002"
+      ],
+      "fn": [
+        "eval-e025",
+        "eval-f037"
+      ],
+      "precision": 0.25,
+      "recall": 0.5,
+      "f1": 0.3333333333333333
+    }
+  ]
+}

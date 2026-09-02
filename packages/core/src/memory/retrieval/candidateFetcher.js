@@ -54,7 +54,7 @@ const NULL_EMBED = async () => null;
  *
  * @param {{
  *   vectorStore?:  { findRelevant(params: object): Promise<object[]> },
- *   keywordStore?: { findRelevant(query: string, sessionId: string): Promise<object[]> },
+ *   keywordStore?: { findRelevant(query: string, sessionId: string, userId?: string|null): Promise<object[]> },
  *   graphStore?:   {
  *     findSimilarMemories(memoryId: string, limit: number): Promise<object[]>,
  *     findMemoriesByKeyword?(sessionId: string, keyword: string, limit: number): Promise<object[]>,
@@ -121,7 +121,14 @@ export function createCandidateFetcher(stores = {}) {
       // Keyword store (Postgres FTS)
       (async () => {
         try {
-          const results = await keywordStore.findRelevant(query, sessionId);
+          // Pass userId so the keyword store can widen the search to include
+          // factual memories stored in other sessions for the same user.
+          // This is the fix that enables cross-conversation factual memory
+          // retrieval (e.g. "my name is Vinod" stored in Chat A retrieved in Chat B).
+          // RC2 fix: also pass queryEmbedding so the keyword store can compute
+          // cosine similarity against stored factual embeddings, giving factual
+          // memories a non-zero vectorScore and making them competitive with Qdrant.
+          const results = await keywordStore.findRelevant(query, sessionId, userId, queryEmbedding);
           return (results || []).map((m) => ({ ...m, _hybridSource: SOURCE.KEYWORD }));
         } catch {
           return [];

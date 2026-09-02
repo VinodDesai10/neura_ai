@@ -16,6 +16,10 @@
     "build": "npm run build --workspaces",
     "lint": "npm run lint --workspaces",
     "test:retrieval": "npm --workspace @neura/api run test:retrieval",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "confusion-matrix": "node tools/confusion-matrix.js",
+    "visual-report": "node tools/confusion-matrix.js && node tools/generate-visual-report.js",
+    "seed-context-evaluation": "node tools/seed-context-evaluation-data.js",
+    "evaluate-context-retrieval": "node tools/evaluate-context-retrieval.js"
   }
 }

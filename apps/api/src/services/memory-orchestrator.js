@@ -46,6 +46,9 @@ import {
   retrievalResultsCount,
   retrievalDurationSeconds
 } from "../lib/metrics.js";
+import { logger } from "../lib/logger.js";
+
+const orchLog = logger.child({ component: "memory-orchestrator" });
 
 // ─── Session state inference ──────────────────────────────────────────────────
 
@@ -159,6 +162,25 @@ async function retrieveWorkingSet({ sessionId, userId, message, seedMemories = [
     hybridRetrieval.getRelevantMemories(message, userId, sessionId).catch(() => [])
   ]);
 
+  // ── TRACE: hybrid retrieval result ──────────────────────────────────────
+  orchLog.info(
+    {
+      sessionId,
+      userId,
+      hasUserId: userId !== null,
+      hybridMemoriesCount: hybridMemories.length,
+      hybridSummaries: hybridMemories.slice(0, 5).map((m) => ({
+        id:        m.id?.slice(0, 8),
+        type:      m.memoryType,
+        userId:    m.userId ? m.userId.slice(0, 8) : "null",
+        sessionId: m.sessionId?.slice(0, 8),
+        score:     m._hybrid?.finalScore?.toFixed(3) ?? "?",
+        summary:   (m.summary || m.content || "").slice(0, 60)
+      }))
+    },
+    "retrieval.hybrid.result"
+  );
+
   const recentContext    = recentTurns.length ? recentTurns : rawRecentContext;
   const previousMemories = previousWorkingMemory?.activeMemories || [];
 
@@ -213,6 +235,23 @@ async function retrieveWorkingSet({ sessionId, userId, message, seedMemories = [
     finalActiveMemories,
     consolidationStore,
     { userId, topK: 3 }
+  );
+
+  // ── TRACE: final working set ─────────────────────────────────────────────
+  orchLog.info(
+    {
+      sessionId,
+      userId,
+      workingSetCount: enrichedActiveMemories.length,
+      workingSetSummaries: enrichedActiveMemories.slice(0, 5).map((m) => ({
+        id:       m.id?.slice(0, 8),
+        type:     m.memoryType,
+        userId:   m.userId ? m.userId.slice(0, 8) : "null",
+        score:    m._retrieval?.score?.toFixed(3) ?? "?",
+        summary:  (m.summary || m.content || "").slice(0, 60)
+      }))
+    },
+    "retrieval.workingSet.assembled"
   );
 
   const retrievalDurationSec = Number(process.hrtime.bigint() - retrievalStart) / 1e9;

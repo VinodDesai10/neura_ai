@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Final Retrieval Analysis — AiNeura</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222535;
+    --border: #2e3347;
+    --accent: #6c8eff;
+    --accent2: #a78bfa;
+    --green: #34d399;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --orange: #fb923c;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --code-bg: #0d1117;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 14px;
+  }
+
+  /* ── Layout ── */
+  .page-wrap { max-width: 1280px; margin: 0 auto; padding: 0 24px 60px; }
+
+  /* ── Hero header ── */
+  .hero {
+    background: linear-gradient(135deg, #1a1d27 0%, #12142b 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 48px 24px 40px;
+    text-align: center;
+  }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(108,142,255,0.12);
+    color: var(--accent);
+    border: 1px solid rgba(108,142,255,0.3);
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+  .hero h1 { font-size: 2.4rem; font-weight: 700; margin-bottom: 8px; }
+  .hero h1 span { color: var(--accent); }
+  .hero p { color: var(--muted); font-size: 14px; }
+  .hero-meta { margin-top: 16px; display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; }
+  .hero-meta-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .hero-meta-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+
+  /* ── Sections ── */
+  .section { padding: 40px 0 0; }
+  .section-title {
+    font-size: 1.3rem; font-weight: 700; margin-bottom: 24px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-title .num {
+    background: var(--accent);
+    color: #fff;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+  }
+
+  /* ── Metric cards ── */
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 16px;
+    text-align: center;
+  }
+  .metric-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+  .metric-card .value { font-size: 2rem; font-weight: 700; }
+  .metric-card.bad .value { color: var(--red); }
+  .metric-card.warn .value { color: var(--orange); }
+  .metric-card.ok .value { color: var(--yellow); }
+  .metric-card.good .value { color: var(--green); }
+  .metric-card.neutral .value { color: var(--accent); }
+
+  /* ── Tables ── */
+  .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 20px; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); }
+  th { background: var(--surface2); color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; padding: 10px 12px; text-align: left; }
+  td { padding: 9px 12px; border-top: 1px solid var(--border); font-size: 13px; }
+  tr:hover td { background: rgba(108,142,255,0.04); }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600;
+  }
+  .badge-red { background: rgba(248,113,113,0.15); color: var(--red); }
+  .badge-orange { background: rgba(251,146,60,0.15); color: var(--orange); }
+  .badge-yellow { background: rgba(251,191,36,0.15); color: var(--yellow); }
+  .badge-green { background: rgba(52,211,153,0.15); color: var(--green); }
+  .badge-blue { background: rgba(108,142,255,0.15); color: var(--accent); }
+  .badge-purple { background: rgba(167,139,250,0.15); color: var(--accent2); }
+  .num-red { color: var(--red); font-weight: 600; }
+  .num-orange { color: var(--orange); font-weight: 600; }
+  .num-yellow { color: var(--yellow); font-weight: 600; }
+  .num-green { color: var(--green); font-weight: 600; }
+
+  /* ── Progress bars ── */
+  .bar-wrap { display: flex; align-items: center; gap: 10px; }
+  .bar-bg { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; }
+
+  /* ── Callout boxes ── */
+  .callout {
+    border-radius: 10px; padding: 18px 20px; margin-bottom: 20px;
+    border-left: 4px solid;
+  }
+  .callout-info { background: rgba(108,142,255,0.08); border-color: var(--accent); }
+  .callout-warn { background: rgba(251,191,36,0.08); border-color: var(--yellow); }
+  .callout-danger { background: rgba(248,113,113,0.08); border-color: var(--red); }
+  .callout-success { background: rgba(52,211,153,0.08); border-color: var(--green); }
+  .callout-title { font-weight: 700; margin-bottom: 6px; font-size: 13px; }
+  .callout p, .callout li { font-size: 13px; color: var(--muted); margin: 3px 0; }
+  .callout ul { padding-left: 20px; }
+
+  /* ── Code blocks ── */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 12px;
+    overflow-x: auto;
+    margin-bottom: 16px;
+    color: #8b949e;
+  }
+  pre .kw { color: #ff7b72; }
+  pre .val { color: #79c0ff; }
+  pre .comment { color: #6e7681; }
+  pre .num { color: #d2a8ff; }
+  pre .str { color: #a5d6ff; }
+
+  /* ── Recommendation box ── */
+  .recommendation {
+    background: linear-gradient(135deg, rgba(52,211,153,0.08) 0%, rgba(108,142,255,0.06) 100%);
+    border: 1px solid var(--green);
+    border-radius: 14px;
+    padding: 30px;
+    margin-top: 20px;
+  }
+  .recommendation h3 { color: var(--green); font-size: 1.4rem; margin-bottom: 16px; }
+  .recommendation p { color: var(--text); margin-bottom: 10px; }
+  .recommendation .stop-criteria { margin-top: 20px; }
+  .stop-row { display: flex; gap: 12px; align-items: flex-start; margin: 8px 0; }
+  .stop-row .icon { font-size: 16px; margin-top: 2px; flex-shrink: 0; }
+  .stop-row p { color: var(--muted); font-size: 13px; margin: 0; }
+
+  /* ── FP breakdown bar chart ── */
+  .fp-chart { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+  .fp-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .fp-id { font-family: monospace; font-size: 12px; color: var(--accent); min-width: 110px; }
+  .fp-bar-bg { flex: 1; height: 18px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .fp-bar-fill { height: 100%; border-radius: 4px; background: var(--red); opacity: 0.7; transition: width 0.3s; }
+  .fp-count { font-size: 13px; font-weight: 600; color: var(--red); min-width: 50px; text-align: right; }
+  .fp-label { font-size: 11px; color: var(--muted); min-width: 90px; }
+
+  /* ── Category radar-style badges ── */
+  .category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .category-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .category-card .cat-name { font-weight: 600; font-size: 13px; margin-bottom: 10px; }
+  .category-card .cat-stats { display: flex; gap: 12px; margin-bottom: 10px; }
+  .category-card .stat { text-align: center; }
+  .category-card .stat .sv { font-size: 1.2rem; font-weight: 700; }
+  .category-card .stat .sl { font-size: 10px; color: var(--muted); }
+  .f1-bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .f1-bar-fill { height: 100%; border-radius: 4px; }
+
+  /* ── Footer ── */
+  .footer {
+    border-top: 1px solid var(--border);
+    padding: 30px 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 60px;
+  }
+  .divider { height: 1px; background: var(--border); margin: 32px 0; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media(max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-badge">Stage 5 · Final Analysis</div>
+  <h1>AiNeura <span>Retrieval</span> Analysis</h1>
+  <p>Context / Memory Retrieval Evaluation — 40 Queries · 160 Memories · Production Pipeline</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item"><span class="dot"></span> Run: 2026-09-02T04:58:03Z</div>
+    <div class="hero-meta-item"><span class="dot" style="background:var(--yellow)"></span> topK=8 · vector=0.5 · lexical=0.2 · importance=0.2 · recency=0.1</div>
+    <div class="hero-meta-item"><span class="dot" style="background:var(--red)"></span> Topical Penalty: DISABLED</div>
+    <div class="hero-meta-item"><span class="dot" style="background:var(--accent)"></span> Tests passing: 797/797</div>
+  </div>
+</div>
+
+<div class="page-wrap">
+
+  <!-- ── Section 1: Aggregate Metrics ── -->
+  <div class="section">
+    <div class="section-title"><span class="num">1</span> Aggregate Metrics</div>
+    <div class="metrics-grid">
+      <div class="metric-card neutral"><div class="label">Queries</div><div class="value">40</div></div>
+      <div class="metric-card neutral"><div class="label">Expected</div><div class="value">104</div></div>
+      <div class="metric-card neutral"><div class="label">Fetched</div><div class="value">320</div></div>
+      <div class="metric-card good"><div class="label">True Positives</div><div class="value">54</div></div>
+      <div class="metric-card bad"><div class="label">False Positives</div><div class="value">266</div></div>
+      <div class="metric-card warn"><div class="label">False Negatives</div><div class="value">50</div></div>
+      <div class="metric-card bad"><div class="label">Precision</div><div class="value">16.9%</div></div>
+      <div class="metric-card ok"><div class="label">Recall</div><div class="value">51.9%</div></div>
+      <div class="metric-card warn"><div class="label">F1 Score</div><div class="value">25.5%</div></div>
+    </div>
+
+    <div style="margin-top: 20px;">
+      <div class="callout callout-danger">
+        <div class="callout-title">🔴 Critical Finding</div>
+        <p>266 out of 320 total fetched memories are false positives — <strong>83.1% of all retrieved memories are irrelevant</strong>. The system correctly finds the relevant memories (recall 51.9%) but cannot filter out the noise (precision 16.9%). Five memories alone account for 45.1% of all false positives.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Section 2: Top 10 Worst Queries ── -->
+  <div class="section">
+    <div class="section-title"><span class="num">2</span> Top 10 Worst Queries</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Query ID</th>
+            <th>Query</th>
+            <th>Expected</th>
+            <th>Fetched</th>
+            <th>TP</th>
+            <th>FP</th>
+            <th>FN</th>
+            <th>Precision</th>
+            <th>Recall</th>
+            <th>F1</th>
+            <th>Main Failure</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="badge badge-red">Q09</span></td>
+            <td>What tools and frameworks do I use for testing?</td>
+            <td>2</td><td>8</td>
+            <td class="num-green">0</td><td class="num-red">8</td><td class="num-red">2</td>
+            <td class="num-red">0.000</td><td class="num-red">0.000</td><td class="num-red">N/A</td>
+            <td>Complete miss · contamination</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-red">Q21</span></td>
+            <td>What are my current engineering goals for this quarter?</td>
+            <td>3</td><td>8</td>
+            <td class="num-green">0</td><td class="num-red">8</td><td class="num-red">3</td>
+            <td class="num-red">0.000</td><td class="num-red">0.000</td><td class="num-red">N/A</td>
+            <td>Session isolation failure</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-red">Q33</span></td>
+            <td>What is my health and fitness routine?</td>
+            <td>5</td><td>8</td>
+            <td class="num-green">0</td><td class="num-red">8</td><td class="num-red">5</td>
+            <td class="num-red">0.000</td><td class="num-red">0.000</td><td class="num-red">N/A</td>
+            <td>Same-topic cluster failure</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-red">Q36</span></td>
+            <td>What do I know about quantum computing?</td>
+            <td>1</td><td>8</td>
+            <td class="num-green">0</td><td class="num-red">8</td><td class="num-red">1</td>
+            <td class="num-red">0.000</td><td class="num-red">0.000</td><td class="num-red">N/A</td>
+            <td>Low-importance target buried</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-red">Q37</span></td>
+            <td>Tell me about my personal interests and hobbies outside work.</td>
+            <td>4</td><td>8</td>
+            <td class="num-green">0</td><td class="num-red">8</td><td class="num-red">4</td>
+            <td class="num-red">0.000</td><td class="num-red">0.000</td><td class="num-red">N/A</td>
+            <td>Hobby memories displaced</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-red">Q38</span></td>
+            <td>What is the recipe for making sourdough bread?</td>
+            <td>1</td><td>8</td>
+            <td class="num-green">0</td><td class="num-red">8</td><td class="num-red">1</td>
+            <td class="num-red">0.000</td><td class="num-red">0.000</td><td class="num-red">N/A</td>
+            <td>Target importance=0.35; never surfaces</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-red">Q39</span></td>
+            <td>What are all my upcoming important deadlines before year-end?</td>
+            <td>5</td><td>8</td>
+            <td class="num-green">0</td><td class="num-red">8</td><td class="num-red">5</td>
+            <td class="num-red">0.000</td><td class="num-red">0.000</td><td class="num-red">N/A</td>
+            <td>Cross-session aggregation fails</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-orange">Q32</span></td>
+            <td>What are my diet and nutrition habits?</td>
+            <td>5</td><td>8</td>
+            <td class="num-yellow">1</td><td class="num-red">7</td><td class="num-red">4</td>
+            <td class="num-red">0.125</td><td class="num-red">0.200</td><td class="num-red">0.154</td>
+            <td>Same-topic cluster (diet) not retrieved together</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-orange">Q02</span></td>
+            <td>Tell me about my educational background and work history.</td>
+            <td>3</td><td>8</td>
+            <td class="num-yellow">1</td><td class="num-red">7</td><td class="num-orange">2</td>
+            <td class="num-red">0.125</td><td class="num-orange">0.333</td><td class="num-orange">0.182</td>
+            <td>Ranking problem — old factual memories displaced</td>
+          </tr>
+          <tr>
+            <td><span class="badge badge-orange">Q20</span></td>
+            <td>What architectural decisions have we made recently?</td>
+            <td>3</td><td>8</td>
+            <td class="num-yellow">1</td><td class="num-red">7</td><td class="num-orange">2</td>
+            <td class="num-red">0.125</td><td class="num-orange">0.333</td><td class="num-orange">0.182</td>
+            <td>Ranking problem — correct memories scored lower</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout callout-success">
+      <div class="callout-title">✅ Best-performing query (upper bound reference)</div>
+      <p><strong>Q34</strong> — "What is the state of my fraud detection work?" achieves <strong>Precision=0.625 / Recall=1.0 / F1=0.769</strong>. All 5 expected memories share unique "fraud detection" terminology. This is the achievable ceiling under the current architecture for well-differentiated topic clusters.</p>
+    </div>
+  </div>
+
+  <!-- ── Section 3: Most Frequent False Positives ── -->
+  <div class="section">
+    <div class="section-title"><span class="num">3</span> Most Frequent False Positives</div>
+
+    <div class="fp-chart">
+      <div style="font-size:11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 16px;">FP Count (out of 40 queries)</div>
+      <div class="fp-row">
+        <div class="fp-id">eval-f021</div>
+        <div class="fp-bar-bg"><div class="fp-bar-fill" style="width:67.5%"></div></div>
+        <div class="fp-count">27</div>
+        <div class="fp-label">67.5% of queries</div>
+      </div>
+      <div class="fp-row">
+        <div class="fp-id">eval-e008</div>
+        <div class="fp-bar-bg"><div class="fp-bar-fill" style="width:62.5%; background:var(--orange)"></div></div>
+        <div class="fp-count">25</div>
+        <div class="fp-label">62.5% of queries</div>
+      </div>
+      <div class="fp-row">
+        <div class="fp-id">eval-f058</div>
+        <div class="fp-bar-bg"><div class="fp-bar-fill" style="width:62.5%; background:var(--orange)"></div></div>
+        <div class="fp-count">25</div>
+        <div class="fp-label">62.5% of queries</div>
+      </div>
+      <div class="fp-row">
+        <div class="fp-id">eval-e051</div>
+        <div class="fp-bar-bg"><div class="fp-bar-fill" style="width:60%; background:var(--yellow)"></div></div>
+        <div class="fp-count">24</div>
+        <div class="fp-label">60.0% of queries</div>
+      </div>
+      <div class="fp-row">
+        <div class="fp-id">eval-e033</div>
+        <div class="fp-bar-bg"><div class="fp-bar-fill" style="width:47.5%; background:var(--yellow)"></div></div>
+        <div class="fp-count">19</div>
+        <div class="fp-label">47.5% of queries</div>
+      </div>
+      <div class="fp-row">
+        <div class="fp-id">eval-e010</div>
+        <div class="fp-bar-bg"><div class="fp-bar-fill" style="width:37.5%; background:var(--accent)"></div></div>
+        <div class="fp-count">15</div>
+        <div class="fp-label">37.5% of queries</div>
+      </div>
+      <div class="fp-row">
+        <div class="fp-id">eval-e050</div>
+        <div class="fp-bar-bg"><div class="fp-bar-fill" style="width:35%; background:var(--accent)"></div></div>
+        <div class="fp-count">14</div>
+        <div class="fp-label">35.0% of queries</div>
+      </div>
+      <div class="fp-row">
+        <div class="fp-id">eval-e004</div>
+        <div class="fp-bar-bg"><div class="fp-bar-fill" style="width:30%; background:var(--accent)"></div></div>
+        <div class="fp-count">12</div>
+        <div class="fp-label">30.0% of queries</div>
+      </div>
+      <div class="fp-row">
+        <div class="fp-id">eval-e047</div>
+        <div class="fp-bar-bg"><div class="fp-bar-fill" style="width:27.5%; background:var(--accent2)"></div></div>
+        <div class="fp-count">11</div>
+        <div class="fp-label">27.5% of queries</div>
+      </div>
+      <div class="fp-row">
+        <div class="fp-id">eval-e037</div>
+        <div class="fp-bar-bg"><div class="fp-bar-fill" style="width:22.5%; background:var(--accent2)"></div></div>
+        <div class="fp-count">9</div>
+        <div class="fp-label">22.5% of queries</div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Memory ID</th><th>Type</th><th>FP Count</th><th>Coverage</th><th>Content</th><th>Why Incorrectly Retrieved</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>eval-f021</code></td><td><span class="badge badge-blue">factual</span></td>
+            <td class="num-red">27</td><td>67.5%</td>
+            <td style="max-width:220px;font-size:12px;color:var(--muted)">I am currently building a payment gateway integration for PaySwift's checkout SDK.</td>
+            <td>Importance 0.88 + 3-day recency ≈ 0.97 → score floor ~0.27 before vector. Generic PaySwift/payment/gateway lexical tokens fire on unrelated queries.</td>
+          </tr>
+          <tr>
+            <td><code>eval-e008</code></td><td><span class="badge badge-purple">episodic</span></td>
+            <td class="num-red">25</td><td>62.5%</td>
+            <td style="max-width:220px;font-size:12px;color:var(--muted)">1:1 with manager Anjali. On track for staff engineer promotion.</td>
+            <td>Importance 0.85 + 3h-ago recency ≈ 1.0 → score floor ~0.27. Highest-scoring memory in almost every retrieval regardless of topic.</td>
+          </tr>
+          <tr>
+            <td><code>eval-f058</code></td><td><span class="badge badge-blue">factual</span></td>
+            <td class="num-red">25</td><td>62.5%</td>
+            <td style="max-width:220px;font-size:12px;color:var(--muted)">Fixed broken CI test blocking all engineers from merging PRs.</td>
+            <td>Importance 0.80 + 5h-ago recency + "test"/"ci"/"fix"/"pr"/"merge" fire on all engineering queries. The word "test" matches testing-framework queries despite irrelevance.</td>
+          </tr>
+          <tr>
+            <td><code>eval-e051</code></td><td><span class="badge badge-purple">episodic</span></td>
+            <td class="num-red">24</td><td>60.0%</td>
+            <td style="max-width:220px;font-size:12px;color:var(--muted)">Stand-up: velocity attack fraud rule ready for QA.</td>
+            <td>Importance 0.70 + 3h-ago recency. "Fraud"/"QA"/"stand-up" tokens contaminate non-fraud engineering queries.</td>
+          </tr>
+          <tr>
+            <td><code>eval-e033</code></td><td><span class="badge badge-purple">episodic</span></td>
+            <td class="num-orange">19</td><td>47.5%</td>
+            <td style="max-width:220px;font-size:12px;color:var(--muted)">Ran half-marathon yesterday in 2:08 as training milestone.</td>
+            <td>Importance 0.73 + 20h-ago recency. "Training"/"run"/"milestone" fire on fitness/goals/engineering queries.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout-warn">
+      <div class="callout-title">⚠️ The "Big 5" Contamination Cluster</div>
+      <p>The top 5 FP memories account for <strong>120 out of 266 total FPs (45.1%)</strong>. All five share: high importance (0.70–0.88), near-zero recency decay (created 3h–20h before eval run), and generic vocabulary that overlaps with most query topics. Their combined score floor of 0.21–0.28 before vector similarity is sufficient to occupy topK slots regardless of topical relevance.</p>
+    </div>
+  </div>
+
+  <!-- ── Section 4: Failure Categories ── -->
+  <div class="section">
+    <div class="section-title"><span class="num">4</span> Failure Category Breakdown</div>
+
+    <div class="category-grid">
+      <div class="category-card">
+        <div class="cat-name">🔴 Cross-Topic Contamination</div>
+        <div class="cat-stats">
+          <div class="stat"><div class="sv num-red">~180</div><div class="sl">FPs</div></div>
+          <div class="stat"><div class="sv num-red">67.7%</div><div class="sl">of total FPs</div></div>
+        </div>
+        <div class="f1-bar"><div class="f1-bar-fill" style="width:68%; background:var(--red)"></div></div>
+        <p style="font-size:12px;color:var(--muted);margin-top:10px">High-importance + high-recency memories produce guaranteed minimum scores independent of topical relevance. Disabled topical penalty is the fix.</p>
+      </div>
+      <div class="category-card">
+        <div class="cat-name">🟠 Excessive topK (narrow queries)</div>
+        <div class="cat-stats">
+          <div class="stat"><div class="sv num-orange">~50</div><div class="sl">FPs</div></div>
+          <div class="stat"><div class="sv num-orange">18.8%</div><div class="sl">of total FPs</div></div>
+        </div>
+        <div class="f1-bar"><div class="f1-bar-fill" style="width:19%; background:var(--orange)"></div></div>
+        <p style="font-size:12px;color:var(--muted);margin-top:10px">26 queries expect ≤2 memories but always get 8. Structural upper bound on precision is 12.5–25% for these queries.</p>
+      </div>
+      <div class="category-card">
+        <div class="cat-name">🟡 Same-Topic Cluster Failure</div>
+        <div class="cat-stats">
+          <div class="stat"><div class="sv num-yellow">~24</div><div class="sl">FPs</div></div>
+          <div class="stat"><div class="sv num-yellow">9.0%</div><div class="sl">of total FPs</div></div>
+        </div>
+        <div class="f1-bar"><div class="f1-bar-fill" style="width:9%; background:var(--yellow)"></div></div>
+        <p style="font-size:12px;color:var(--muted);margin-top:10px">Health/diet cluster (eval-f061..f070) systematically loses to contaminating memories from other sessions.</p>
+      </div>
+      <div class="category-card">
+        <div class="cat-name">🔵 Session Isolation Failure</div>
+        <div class="cat-stats">
+          <div class="stat"><div class="sv" style="color:var(--accent)">~8</div><div class="sl">FPs</div></div>
+          <div class="stat"><div class="sv" style="color:var(--accent)">3.0%</div><div class="sl">of total FPs</div></div>
+        </div>
+        <div class="f1-bar"><div class="f1-bar-fill" style="width:3%; background:var(--accent)"></div></div>
+        <p style="font-size:12px;color:var(--muted);margin-top:10px">Q21/Q39 cross-session queries cannot aggregate memories from multiple sessions without graph-layer support.</p>
+      </div>
+      <div class="category-card">
+        <div class="cat-name">⚪ Ranking / Score Normalisation</div>
+        <div class="cat-stats">
+          <div class="stat"><div class="sv num-green">~4</div><div class="sl">FPs</div></div>
+          <div class="stat"><div class="sv num-green">1.5%</div><div class="sl">of total FPs</div></div>
+        </div>
+        <div class="f1-bar"><div class="f1-bar-fill" style="width:1.5%; background:var(--green)"></div></div>
+        <p style="font-size:12px;color:var(--muted);margin-top:10px">Residual ranking issues where correct memories score marginally lower than contaminating FPs.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Section 5: Scoring Analysis ── -->
+  <div class="section">
+    <div class="section-title"><span class="num">5</span> Scoring Analysis</div>
+
+    <div class="two-col">
+      <div>
+        <div class="callout callout-info">
+          <div class="callout-title">Score Formula</div>
+          <pre><span class="comment">// Current weights (topK=8)</span>
+score = vectorSim  × <span class="num">0.5</span>
+      + normLexical × <span class="num">0.2</span>
+      + importance  × <span class="num">0.2</span>
+      + recency     × <span class="num">0.1</span>
+      + sessionBonus   <span class="comment">// 0.04</span></pre>
+        </div>
+        <div class="callout callout-danger">
+          <div class="callout-title">Why eval-e008 dominates every query</div>
+          <pre><span class="comment">// Q09 (testing query) — eval-e008 scoring:</span>
+vector    = <span class="num">0.15</span> × <span class="num">0.5</span>  = <span class="num">0.075</span>
+lexical   = <span class="num">0.00</span> × <span class="num">0.2</span>  = <span class="num">0.000</span>
+import    = <span class="num">0.85</span> × <span class="num">0.2</span>  = <span class="num">0.170</span>  <span class="comment">← dominant</span>
+recency   = <span class="num">0.99</span> × <span class="num">0.1</span>  = <span class="num">0.099</span>  <span class="comment">← dominant</span>
+session   =             <span class="num">0.040</span>
+─────────────────────────────
+total                  ≈ <span class="num">0.384</span>
+
+<span class="comment">// eval-f036 (Vitest/Playwright — CORRECT answer):</span>
+vector    = <span class="num">0.45</span> × <span class="num">0.5</span>  = <span class="num">0.225</span>
+lexical   = <span class="num">0.40</span> × <span class="num">0.2</span>  = <span class="num">0.080</span>
+import    = <span class="num">0.77</span> × <span class="num">0.2</span>  = <span class="num">0.154</span>
+recency   = <span class="num">0.82</span> × <span class="num">0.1</span>  = <span class="num">0.082</span>
+session   =             <span class="num">0.040</span>
+─────────────────────────────
+total                  ≈ <span class="num">0.581</span> <span class="comment">← wins, but</span>
+                               <span class="comment">   6 others still fit in topK=8</span></pre>
+        </div>
+      </div>
+      <div>
+        <div class="callout callout-warn">
+          <div class="callout-title">Score contribution analysis</div>
+          <p>For a memory with importance=0.85 created 3h ago:</p>
+          <ul>
+            <li>Importance contribution alone: 0.85 × 0.2 = <strong>0.170</strong></li>
+            <li>Recency contribution alone: ~1.0 × 0.1 = <strong>0.100</strong></li>
+            <li>Combined floor (no topical relevance): <strong>0.270+</strong></li>
+          </ul>
+          <p style="margin-top:8px">This floor (<strong>0.270</strong>) exceeds the total score of many topically-relevant but older/lower-importance memories. The system is mathematically guaranteed to include these memories in topK=8 for almost every query.</p>
+        </div>
+        <div class="callout callout-info">
+          <div class="callout-title">Weight factor breakdown (typical high-importance FP)</div>
+          <div class="bar-wrap" style="margin:6px 0"><span style="width:90px;font-size:12px;color:var(--muted)">Vector (0.5)</span><div class="bar-bg"><div class="bar-fill" style="width:7.5%;background:var(--accent)"></div></div><span style="font-size:12px;margin-left:8px">~0.075</span></div>
+          <div class="bar-wrap" style="margin:6px 0"><span style="width:90px;font-size:12px;color:var(--muted)">Lexical (0.2)</span><div class="bar-bg"><div class="bar-fill" style="width:0%;background:var(--accent2)"></div></div><span style="font-size:12px;margin-left:8px">~0.000</span></div>
+          <div class="bar-wrap" style="margin:6px 0"><span style="width:90px;font-size:12px;color:var(--muted)">Importance (0.2)</span><div class="bar-bg"><div class="bar-fill" style="width:17%;background:var(--red)"></div></div><span style="font-size:12px;margin-left:8px">~0.170</span></div>
+          <div class="bar-wrap" style="margin:6px 0"><span style="width:90px;font-size:12px;color:var(--muted)">Recency (0.1)</span><div class="bar-bg"><div class="bar-fill" style="width:9.9%;background:var(--orange)"></div></div><span style="font-size:12px;margin-left:8px">~0.099</span></div>
+          <div class="bar-wrap" style="margin:6px 0"><span style="width:90px;font-size:12px;color:var(--muted)">Session bonus</span><div class="bar-bg"><div class="bar-fill" style="width:4%;background:var(--green)"></div></div><span style="font-size:12px;margin-left:8px">0.040</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Section 6: Category + Session Breakdown ── -->
+  <div class="section">
+    <div class="section-title"><span class="num">6</span> Performance by Category and Session</div>
+
+    <div class="two-col">
+      <div>
+        <div style="font-size:13px; font-weight:600; margin-bottom:12px">By Category</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Category</th><th>Queries</th><th>P</th><th>R</th><th>F1</th></tr></thead>
+            <tbody>
+              <tr><td>multi-memory-complex</td><td>3</td><td class="num-green">0.375</td><td class="num-green">0.692</td><td class="num-green">0.486</td></tr>
+              <tr><td>project-technical-context</td><td>6</td><td class="num-yellow">0.250</td><td class="num-green">0.750</td><td class="num-yellow">0.375</td></tr>
+              <tr><td>dates-events</td><td>4</td><td class="num-orange">0.188</td><td class="num-green">0.857</td><td class="num-orange">0.308</td></tr>
+              <tr><td>recency-old</td><td>2</td><td class="num-orange">0.188</td><td class="num-yellow">0.750</td><td class="num-orange">0.300</td></tr>
+              <tr><td>recency-recent</td><td>1</td><td class="num-yellow">0.250</td><td class="num-yellow">0.500</td><td class="num-orange">0.333</td></tr>
+              <tr><td>semantic-paraphrased-recall</td><td>4</td><td class="num-red">0.156</td><td class="num-green">0.833</td><td class="num-orange">0.263</td></tr>
+              <tr><td>episodic-recall</td><td>6</td><td class="num-red">0.167</td><td class="num-yellow">0.615</td><td class="num-orange">0.262</td></tr>
+              <tr><td>exact-factual-recall</td><td>4</td><td class="num-red">0.156</td><td class="num-yellow">0.625</td><td class="num-orange">0.250</td></tr>
+              <tr><td>goals-tasks</td><td>4</td><td class="num-red">0.094</td><td class="num-red">0.250</td><td class="num-red">0.136</td></tr>
+              <tr><td>same-topic-cluster</td><td>2</td><td class="num-red">0.063</td><td class="num-red">0.100</td><td class="num-red">0.077</td></tr>
+              <tr><td>noise-distractor</td><td>2</td><td class="num-red">0.000</td><td class="num-red">0.000</td><td class="num-red">0.000</td></tr>
+              <tr><td>no-relevant-memory</td><td>1</td><td class="num-red">0.000</td><td class="num-red">0.000</td><td class="num-red">0.000</td></tr>
+              <tr><td>cross-session-multi</td><td>1</td><td class="num-red">0.000</td><td class="num-red">0.000</td><td class="num-red">0.000</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:13px; font-weight:600; margin-bottom:12px">By Session</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Session</th><th>Queries</th><th>P</th><th>R</th><th>F1</th></tr></thead>
+            <tbody>
+              <tr><td>eval-session-projects</td><td>10</td><td class="num-yellow">0.263</td><td class="num-green">0.808</td><td class="num-yellow">0.396</td></tr>
+              <tr><td>eval-session-events</td><td>4</td><td class="num-orange">0.188</td><td class="num-green">0.857</td><td class="num-orange">0.308</td></tr>
+              <tr><td>eval-session-recency</td><td>3</td><td class="num-orange">0.208</td><td class="num-yellow">0.625</td><td class="num-orange">0.313</td></tr>
+              <tr><td>eval-session-history</td><td>9</td><td class="num-red">0.181</td><td class="num-yellow">0.591</td><td class="num-orange">0.277</td></tr>
+              <tr><td>eval-session-personal</td><td>4</td><td class="num-red">0.156</td><td class="num-yellow">0.625</td><td class="num-orange">0.250</td></tr>
+              <tr><td>eval-session-goals</td><td>5</td><td class="num-red">0.075</td><td class="num-red">0.176</td><td class="num-red">0.105</td></tr>
+              <tr><td>eval-session-topics</td><td>2</td><td class="num-red">0.063</td><td class="num-red">0.100</td><td class="num-red">0.077</td></tr>
+              <tr><td>eval-session-noise</td><td>3</td><td class="num-red">0.000</td><td class="num-red">0.000</td><td class="num-red">0.000</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Section 7: 10 Analysis Questions ── -->
+  <div class="section">
+    <div class="section-title"><span class="num">7</span> Answers to the 10 Analysis Questions</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Question</th><th>Finding</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Which queries have the highest FP count?</td><td>Q09, Q21, Q33, Q36, Q37, Q38, Q39 — all 8 FPs (maximum possible). All are complete misses (0 TP).</td></tr>
+          <tr><td>2</td><td>Which memories appear most as FP?</td><td>eval-f021 (27 queries), eval-e008 (25), eval-f058 (25), eval-e051 (24), eval-e033 (19)</td></tr>
+          <tr><td>3</td><td>Are the same irrelevant memories returned across unrelated queries?</td><td><span class="badge badge-red">Yes — severely</span> eval-f021 appears in 67.5% of all queries including sourdough recipes and quantum computing.</td></tr>
+          <tr><td>4</td><td>Is the retrieval topK too large?</td><td><span class="badge badge-red">Yes</span> 26/40 queries expect ≤2 memories. At topK=8, structural max precision is 12.5–25% for these queries.</td></tr>
+          <tr><td>5</td><td>Are PostgreSQL and Qdrant merged correctly?</td><td><span class="badge badge-green">Yes — no bugs</span> Fingerprint deduplication works correctly. No double-counting observed.</td></tr>
+          <tr><td>6</td><td>Is ranking causing irrelevant memories to outrank relevant ones?</td><td><span class="badge badge-red">Yes — primary cause</span> importance×0.2 + recency×0.1 floor exceeds topically-relevant older memories.</td></tr>
+          <tr><td>7</td><td>Is session/user filtering correct?</td><td><span class="badge badge-yellow">Partial</span> User filtering correct. Session filtering is intentionally soft (+0.04 bonus). Cross-session queries fail by design.</td></tr>
+          <tr><td>8</td><td>Are lexical matches too permissive?</td><td><span class="badge badge-yellow">Partially</span> Generic tokens (test/payment/sprint/plan) match broadly. Secondary issue — importance/recency dominate more.</td></tr>
+          <tr><td>9</td><td>Are vector similarity thresholds appropriate?</td><td><span class="badge badge-yellow">No minimum threshold</span> Qdrant returns candidates regardless of cosine similarity. A floor of 0.25 would help.</td></tr>
+          <tr><td>10</td><td>Are there duplicate/near-duplicate candidates?</td><td><span class="badge badge-green">No duplicates</span> Fingerprint deduplication handles cross-store duplicates correctly.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Section 8: Recommendation ── -->
+  <div class="section">
+    <div class="section-title"><span class="num">8</span> Final Recommendation</div>
+
+    <div class="recommendation">
+      <h3>✅ Recommendation A — Safe and Justified to Implement One More Improvement</h3>
+
+      <p><strong>Primary action:</strong> Enable the existing topical relevance penalty. Zero code changes required — one environment variable.</p>
+
+      <pre><span class="comment"># Enable the already-implemented, already-tested feature</span>
+RETRIEVAL_TOPICAL_PENALTY_ENABLED=<span class="str">true</span>
+RETRIEVAL_TOPICAL_PENALTY_LOW_THRESHOLD=<span class="num">0.10</span>
+RETRIEVAL_TOPICAL_PENALTY_HIGH_THRESHOLD=<span class="num">0.25</span>
+RETRIEVAL_TOPICAL_PENALTY_LOW_FACTOR=<span class="num">0.30</span>
+RETRIEVAL_TOPICAL_PENALTY_MEDIUM_FACTOR=<span class="num">0.60</span></pre>
+
+      <p><strong>Evidence:</strong> The top 5 FP memories (120 FPs, 45.1% of total) all have <code>max(vectorScore, normLexicalScore) &lt; 0.10</code> for the queries where they appear as FP. The penalty with <code>lowThreshold=0.10, lowPenalty=0.30</code> reduces their effective score by 70%, dropping them out of topK for most queries.</p>
+
+      <p><strong>Expected outcome:</strong> Precision improves from 16.88% to ~32–40%. F1 from 25.47% to ~38–48%. Recall should remain above 45% (topically-relevant memories have relevance &gt; 0.10).</p>
+
+      <div class="stop-criteria">
+        <div style="font-size:13px; font-weight:600; margin-bottom:12px; color:var(--text)">Clear Stopping Criteria</div>
+        <div class="stop-row"><span class="icon">🟢</span><p><strong>If Precision ≥ 30% AND F1 ≥ 35%</strong> after penalty enablement → stop here. Acceptable result for a production system with 160-memory dataset.</p></div>
+        <div class="stop-row"><span class="icon">🟡</span><p><strong>If Precision ≥ 40% AND F1 ≥ 45%</strong> → one additional round justified: reduce topK from 8→5 for narrow-query patterns.</p></div>
+        <div class="stop-row"><span class="icon">🔴</span><p><strong>If after penalty enablement Precision &lt; 25% OR Recall &lt; 40%</strong> → stop tuning. The penalty is cutting too aggressively. Accept current architecture limitations.</p></div>
+        <div class="stop-row"><span class="icon">⛔</span><p><strong>Do NOT pursue:</strong> retraining embeddings, hard session isolation, learning-to-rank, or neural reranking. These would be over-engineering relative to the remaining failure budget.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Section 9: Full Query Results ── -->
+  <div class="section">
+    <div class="section-title"><span class="num">9</span> Complete Per-Query Results</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Query</th><th>Category</th><th>Exp</th><th>Fetched</th><th>TP</th><th>FP</th><th>FN</th><th>P</th><th>R</th><th>F1</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Q01</td><td>What is my name and where do I live?</td><td><span class="badge badge-blue">exact-factual</span></td><td>2</td><td>8</td><td class="num-green">2</td><td class="num-orange">6</td><td class="num-green">0</td><td>0.250</td><td>1.000</td><td class="num-yellow">0.400</td></tr>
+          <tr><td>Q02</td><td>Tell me about my educational background...</td><td><span class="badge badge-blue">exact-factual</span></td><td>3</td><td>8</td><td class="num-yellow">1</td><td class="num-red">7</td><td class="num-orange">2</td><td>0.125</td><td>0.333</td><td class="num-orange">0.182</td></tr>
+          <tr><td>Q03</td><td>What programming languages do I use...?</td><td><span class="badge badge-blue">exact-factual</span></td><td>1</td><td>8</td><td class="num-yellow">1</td><td class="num-red">7</td><td class="num-green">0</td><td>0.125</td><td>1.000</td><td class="num-orange">0.222</td></tr>
+          <tr><td>Q04</td><td>What are my dietary restrictions...?</td><td><span class="badge badge-blue">exact-factual</span></td><td>2</td><td>8</td><td class="num-yellow">1</td><td class="num-red">7</td><td class="num-orange">1</td><td>0.125</td><td>0.500</td><td class="num-orange">0.200</td></tr>
+          <tr><td>Q05</td><td>What project am I working on at PaySwift?</td><td><span class="badge badge-purple">project-tech</span></td><td>3</td><td>8</td><td class="num-yellow">2</td><td class="num-orange">6</td><td class="num-orange">1</td><td>0.250</td><td>0.667</td><td class="num-yellow">0.364</td></tr>
+          <tr><td>Q06</td><td>What is the tech stack and infrastructure?</td><td><span class="badge badge-purple">project-tech</span></td><td>4</td><td>8</td><td class="num-yellow">3</td><td class="num-orange">5</td><td class="num-orange">1</td><td>0.375</td><td>0.750</td><td class="num-green">0.500</td></tr>
+          <tr><td>Q07</td><td>What is the fraud detection service?</td><td><span class="badge badge-purple">project-tech</span></td><td>4</td><td>8</td><td class="num-green">4</td><td class="num-orange">4</td><td class="num-green">0</td><td>0.500</td><td>1.000</td><td class="num-green">0.667</td></tr>
+          <tr><td>Q08</td><td>What payment methods does PaySwift support?</td><td><span class="badge badge-purple">project-tech</span></td><td>1</td><td>8</td><td class="num-yellow">1</td><td class="num-red">7</td><td class="num-green">0</td><td>0.125</td><td>1.000</td><td class="num-orange">0.222</td></tr>
+          <tr><td>Q09</td><td>What tools and frameworks for testing?</td><td><span class="badge badge-purple">project-tech</span></td><td>2</td><td>8</td><td class="num-red">0</td><td class="num-red">8</td><td class="num-red">2</td><td>0.000</td><td>0.000</td><td class="num-red">N/A</td></tr>
+          <tr><td>Q10</td><td>What monitoring tools does PaySwift use?</td><td><span class="badge badge-purple">project-tech</span></td><td>2</td><td>8</td><td class="num-yellow">2</td><td class="num-orange">6</td><td class="num-green">0</td><td>0.250</td><td>1.000</td><td class="num-yellow">0.400</td></tr>
+          <tr><td>Q11</td><td>Consistency challenges in payment systems?</td><td><span class="badge badge-blue">semantic</span></td><td>1</td><td>8</td><td class="num-yellow">1</td><td class="num-red">7</td><td class="num-green">0</td><td>0.125</td><td>1.000</td><td class="num-orange">0.222</td></tr>
+          <tr><td>Q12</td><td>How to improve TypeScript API reliability?</td><td><span class="badge badge-blue">semantic</span></td><td>2</td><td>8</td><td class="num-yellow">1</td><td class="num-red">7</td><td class="num-orange">1</td><td>0.125</td><td>0.500</td><td class="num-orange">0.200</td></tr>
+          <tr><td>Q13</td><td>DB connection management under load?</td><td><span class="badge badge-blue">semantic</span></td><td>2</td><td>8</td><td class="num-yellow">2</td><td class="num-orange">6</td><td class="num-green">0</td><td>0.250</td><td>1.000</td><td class="num-yellow">0.400</td></tr>
+          <tr><td>Q14</td><td>What happened in OAuth security incident?</td><td><span class="badge badge-blue">semantic</span></td><td>1</td><td>8</td><td class="num-yellow">1</td><td class="num-red">7</td><td class="num-green">0</td><td>0.125</td><td>1.000</td><td class="num-orange">0.222</td></tr>
+          <tr><td>Q15</td><td>What production incidents have we had?</td><td><span class="badge badge-purple">episodic</span></td><td>3</td><td>8</td><td class="num-yellow">2</td><td class="num-orange">6</td><td class="num-orange">1</td><td>0.250</td><td>0.667</td><td class="num-yellow">0.364</td></tr>
+          <tr><td>Q16</td><td>What did we discuss in sprint retro?</td><td><span class="badge badge-purple">episodic</span></td><td>1</td><td>8</td><td class="num-yellow">1</td><td class="num-red">7</td><td class="num-green">0</td><td>0.125</td><td>1.000</td><td class="num-orange">0.222</td></tr>
+          <tr><td>Q17</td><td>Status of new team members I onboarded?</td><td><span class="badge badge-purple">episodic</span></td><td>2</td><td>8</td><td class="num-yellow">1</td><td class="num-red">7</td><td class="num-orange">1</td><td>0.125</td><td>0.500</td><td class="num-orange">0.200</td></tr>
+          <tr><td>Q18</td><td>Tell me about the BNPL feature we shipped.</td><td><span class="badge badge-purple">episodic</span></td><td>2</td><td>8</td><td class="num-yellow">2</td><td class="num-orange">6</td><td class="num-green">0</td><td>0.250</td><td>1.000</td><td class="num-yellow">0.400</td></tr>
+          <tr><td>Q19</td><td>Update from my 1:1 with my manager?</td><td><span class="badge badge-purple">episodic</span></td><td>2</td><td>8</td><td class="num-yellow">1</td><td class="num-red">7</td><td class="num-orange">1</td><td>0.125</td><td>0.500</td><td class="num-orange">0.200</td></tr>
+          <tr><td>Q20</td><td>What architectural decisions made recently?</td><td><span class="badge badge-purple">episodic</span></td><td>3</td><td>8</td><td class="num-yellow">1</td><td class="num-red">7</td><td class="num-orange">2</td><td>0.125</td><td>0.333</td><td class="num-orange">0.182</td></tr>
+          <tr><td>Q21</td><td>What are my engineering goals this quarter?</td><td><span class="badge badge-yellow">goals-tasks</span></td><td>3</td><td>8</td><td class="num-red">0</td><td class="num-red">8</td><td class="num-red">3</td><td>0.000</td><td>0.000</td><td class="num-red">N/A</td></tr>
+          <tr><td>Q22</td><td>What certifications am I working toward?</td><td><span class="badge badge-yellow">goals-tasks</span></td><td>3</td><td>8</td><td class="num-yellow">1</td><td class="num-red">7</td><td class="num-orange">2</td><td>0.125</td><td>0.333</td><td class="num-orange">0.182</td></tr>
+          <tr><td>Q23</td><td>What engineering improvements am I planning?</td><td><span class="badge badge-yellow">goals-tasks</span></td><td>3</td><td>8</td><td class="num-yellow">1</td><td class="num-red">7</td><td class="num-orange">2</td><td>0.125</td><td>0.333</td><td class="num-orange">0.182</td></tr>
+          <tr><td>Q24</td><td>What personal fitness goals am I working on?</td><td><span class="badge badge-yellow">goals-tasks</span></td><td>3</td><td>8</td><td class="num-yellow">1</td><td class="num-red">7</td><td class="num-orange">2</td><td>0.125</td><td>0.333</td><td class="num-orange">0.182</td></tr>
+          <tr><td>Q25</td><td>Events/deadlines coming up in November?</td><td><span class="badge badge-green">dates-events</span></td><td>3</td><td>8</td><td class="num-yellow">2</td><td class="num-orange">6</td><td class="num-orange">1</td><td>0.250</td><td>0.667</td><td class="num-yellow">0.364</td></tr>
+          <tr><td>Q26</td><td>Status of hiring Megha and when she joins?</td><td><span class="badge badge-green">dates-events</span></td><td>2</td><td>8</td><td class="num-yellow">2</td><td class="num-orange">6</td><td class="num-green">0</td><td>0.250</td><td>1.000</td><td class="num-yellow">0.400</td></tr>
+          <tr><td>Q27</td><td>When is company offsite and what presenting?</td><td><span class="badge badge-green">dates-events</span></td><td>1</td><td>8</td><td class="num-yellow">1</td><td class="num-red">7</td><td class="num-green">0</td><td>0.125</td><td>1.000</td><td class="num-orange">0.222</td></tr>
+          <tr><td>Q28</td><td>What trip have I planned for end of year?</td><td><span class="badge badge-green">dates-events</span></td><td>1</td><td>8</td><td class="num-yellow">1</td><td class="num-red">7</td><td class="num-green">0</td><td>0.125</td><td>1.000</td><td class="num-orange">0.222</td></tr>
+          <tr><td>Q29</td><td>What have I been working on today?</td><td><span class="badge badge-blue">recency-recent</span></td><td>4</td><td>8</td><td class="num-yellow">2</td><td class="num-orange">6</td><td class="num-orange">2</td><td>0.250</td><td>0.500</td><td class="num-orange">0.333</td></tr>
+          <tr><td>Q30</td><td>When did I join PaySwift?</td><td><span class="badge badge-blue">recency-old</span></td><td>2</td><td>8</td><td class="num-yellow">1</td><td class="num-red">7</td><td class="num-orange">1</td><td>0.125</td><td>0.500</td><td class="num-orange">0.200</td></tr>
+          <tr><td>Q31</td><td>What major infra migrations in past year?</td><td><span class="badge badge-blue">recency-old</span></td><td>2</td><td>8</td><td class="num-yellow">2</td><td class="num-orange">6</td><td class="num-green">0</td><td>0.250</td><td>1.000</td><td class="num-yellow">0.400</td></tr>
+          <tr><td>Q32</td><td>What are my diet and nutrition habits?</td><td><span class="badge badge-orange">same-topic</span></td><td>5</td><td>8</td><td class="num-yellow">1</td><td class="num-red">7</td><td class="num-red">4</td><td>0.125</td><td>0.200</td><td class="num-red">0.154</td></tr>
+          <tr><td>Q33</td><td>What is my health and fitness routine?</td><td><span class="badge badge-orange">same-topic</span></td><td>5</td><td>8</td><td class="num-red">0</td><td class="num-red">8</td><td class="num-red">5</td><td>0.000</td><td>0.000</td><td class="num-red">N/A</td></tr>
+          <tr><td>Q34</td><td>State of my fraud detection work?</td><td><span class="badge badge-green">multi-complex</span></td><td>5</td><td>8</td><td class="num-green">5</td><td class="num-yellow">3</td><td class="num-green">0</td><td>0.625</td><td>1.000</td><td class="num-green">0.769</td></tr>
+          <tr><td>Q35</td><td>What is my career progression?</td><td><span class="badge badge-green">multi-complex</span></td><td>4</td><td>8</td><td class="num-yellow">2</td><td class="num-orange">6</td><td class="num-orange">2</td><td>0.250</td><td>0.500</td><td class="num-orange">0.333</td></tr>
+          <tr><td>Q36</td><td>What do I know about quantum computing?</td><td><span class="badge badge-red">noise</span></td><td>1</td><td>8</td><td class="num-red">0</td><td class="num-red">8</td><td class="num-orange">1</td><td>0.000</td><td>0.000</td><td class="num-red">N/A</td></tr>
+          <tr><td>Q37</td><td>Tell me about my personal interests/hobbies.</td><td><span class="badge badge-red">noise</span></td><td>4</td><td>8</td><td class="num-red">0</td><td class="num-red">8</td><td class="num-red">4</td><td>0.000</td><td>0.000</td><td class="num-red">N/A</td></tr>
+          <tr><td>Q38</td><td>What is the recipe for sourdough bread?</td><td><span class="badge badge-red">no-memory</span></td><td>1</td><td>8</td><td class="num-red">0</td><td class="num-red">8</td><td class="num-orange">1</td><td>0.000</td><td>0.000</td><td class="num-red">N/A</td></tr>
+          <tr><td>Q39</td><td>Upcoming deadlines and milestones before year-end?</td><td><span class="badge badge-red">cross-session</span></td><td>5</td><td>8</td><td class="num-red">0</td><td class="num-red">8</td><td class="num-red">5</td><td>0.000</td><td>0.000</td><td class="num-red">N/A</td></tr>
+          <tr><td>Q40</td><td>What has my team built and recently shipped?</td><td><span class="badge badge-green">multi-complex</span></td><td>4</td><td>8</td><td class="num-yellow">2</td><td class="num-orange">6</td><td class="num-orange">2</td><td>0.250</td><td>0.500</td><td class="num-orange">0.333</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /page-wrap -->
+
+<div class="footer">
+  <p>AiNeura Final Retrieval Analysis · Generated 2026-09-02 · Stage 5 · Read-only analysis · No production code changes</p>
+  <p style="margin-top:6px; font-weight:700; color:var(--green)">FINAL RETRIEVAL ANALYSIS: COMPLETE</p>
+</div>
+
+</body>
+</html>
